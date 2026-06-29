@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 // ── Mood knob ──
-export const TONE_EXPOSURE = 1.08;
+export const TONE_EXPOSURE = 1.12;
 
 export function createRenderer(canvas) {
   const renderer = new THREE.WebGLRenderer({

@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 
 // ── Mood knobs ──
-export const SKY_TOP = '#6aafd4';
-export const SKY_MID = '#a8cce8';
-export const SKY_HORIZON = '#f2dcc4';
-export const SKY_GROUND = '#d4b896';
-export const FOG_COLOR = 0xd4c8b8;
-export const FOG_NEAR = 22;
-export const FOG_FAR = 85;
+export const SKY_TOP = '#7ab8d8';
+export const SKY_MID = '#b8d4ec';
+export const SKY_HORIZON = '#f4e0c8';
+export const SKY_GROUND = '#d8c0a0';
+export const FOG_COLOR = 0xe0d4c4;
+export const FOG_NEAR = 28;
+export const FOG_FAR = 92;
 
 function createSkyTexture() {
   const canvas = document.createElement('canvas');
@@ -17,8 +17,8 @@ function createSkyTexture() {
 
   const gradient = ctx.createLinearGradient(0, 0, 0, 512);
   gradient.addColorStop(0, SKY_TOP);
-  gradient.addColorStop(0.35, SKY_MID);
-  gradient.addColorStop(0.72, SKY_HORIZON);
+  gradient.addColorStop(0.32, SKY_MID);
+  gradient.addColorStop(0.68, SKY_HORIZON);
   gradient.addColorStop(1, SKY_GROUND);
 
   ctx.fillStyle = gradient;

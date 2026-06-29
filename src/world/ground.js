@@ -1,13 +1,19 @@
 import * as THREE from 'three';
+import { createNoise2D } from 'simplex-noise';
+import { seededRandom } from './procedural/random.js';
 
 const GROUND_SIZE = 120;
-const TEXTURE_SIZE = 512;
+const SEGMENTS = 96;
 
 // ── Mood knobs ──
-export const GRASS_BASE = { r: 82, g: 118, b: 72 };
-export const GRASS_VARIATION = 28;
-export const STONE_LIGHT = { r: 196, g: 186, b: 168 };
-export const STONE_DARK = { r: 168, g: 156, b: 138 };
+export const HEIGHT_AMPLITUDE = 0.38;
+export const HEIGHT_SCALE = 0.028;
+export const GRASS_BASE = new THREE.Color(0x5a8a52);
+export const GRASS_VARIATION = 0.12;
+export const STONE_LIGHT = new THREE.Color(0xc4b8a8);
+export const STONE_DARK = new THREE.Color(0xa89880);
+
+const noise2D = createNoise2D(() => seededRandom(90210)());
 
 function hash2(x, y) {
   const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
@@ -32,11 +38,7 @@ function noise2(x, y) {
   );
 }
 
-function isStoneQuad(wx, wz) {
-  const half = GROUND_SIZE / 2;
-  const u = (wx + half) / GROUND_SIZE;
-  const v = (wz + half) / GROUND_SIZE;
-
+export function isStonePath(wx, wz) {
   const mainPath = Math.abs(wx) < 3.2 && wz > -22 && wz < 22;
   const crossPath = Math.abs(wz) < 2.8 && Math.abs(wx) < 18;
   const poolRing =
@@ -45,6 +47,9 @@ function isStoneQuad(wx, wz) {
 
   if (mainPath || crossPath || poolRing || libraryPlaza) return true;
 
+  const half = GROUND_SIZE / 2;
+  const u = (wx + half) / GROUND_SIZE;
+  const v = (wz + half) / GROUND_SIZE;
   const tileU = Math.floor(u * 8);
   const tileV = Math.floor(v * 8);
   if (tileU >= 3 && tileU <= 4 && tileV >= 3 && tileV <= 4) {
@@ -56,64 +61,72 @@ function isStoneQuad(wx, wz) {
   return false;
 }
 
-function createGroundTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = TEXTURE_SIZE;
-  canvas.height = TEXTURE_SIZE;
-  const ctx = canvas.getContext('2d');
-  const image = ctx.createImageData(TEXTURE_SIZE, TEXTURE_SIZE);
-  const half = GROUND_SIZE / 2;
+export function sampleGroundHeight(wx, wz) {
+  const n = noise2D(wx * HEIGHT_SCALE, wz * HEIGHT_SCALE);
+  const n2 = noise2D(wx * HEIGHT_SCALE * 2.2 + 40, wz * HEIGHT_SCALE * 2.2 + 40);
+  const n3 = noise2D(wx * HEIGHT_SCALE * 0.45 - 20, wz * HEIGHT_SCALE * 0.45 + 80);
+  const blend = n * 0.55 + n2 * 0.3 + n3 * 0.15;
+  let height = blend * HEIGHT_AMPLITUDE;
 
-  for (let py = 0; py < TEXTURE_SIZE; py++) {
-    for (let px = 0; px < TEXTURE_SIZE; px++) {
-      const wx = (px / TEXTURE_SIZE) * GROUND_SIZE - half;
-      const wz = (py / TEXTURE_SIZE) * GROUND_SIZE - half;
-      const n = noise2(wx * 0.12, wz * 0.12);
-      const n2 = noise2(wx * 0.35 + 40, wz * 0.35 + 40);
-
-      let r;
-      let g;
-      let b;
-
-      if (isStoneQuad(wx, wz)) {
-        const blend = n * 0.5 + n2 * 0.3;
-        r = THREE.MathUtils.lerp(STONE_DARK.r, STONE_LIGHT.r, blend);
-        g = THREE.MathUtils.lerp(STONE_DARK.g, STONE_LIGHT.g, blend);
-        b = THREE.MathUtils.lerp(STONE_DARK.b, STONE_LIGHT.b, blend);
-      } else {
-        const variation = (n - 0.5) * GRASS_VARIATION + (n2 - 0.5) * 12;
-        r = GRASS_BASE.r + variation * 0.6;
-        g = GRASS_BASE.g + variation;
-        b = GRASS_BASE.b + variation * 0.4;
-      }
-
-      const i = (py * TEXTURE_SIZE + px) * 4;
-      image.data[i] = r;
-      image.data[i + 1] = g;
-      image.data[i + 2] = b;
-      image.data[i + 3] = 255;
-    }
+  if (isStonePath(wx, wz)) {
+    height *= 0.35;
   }
 
-  ctx.putImageData(image, 0, 0);
+  return height;
+}
 
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.wrapS = THREE.ClampToEdgeWrapping;
-  texture.wrapT = THREE.ClampToEdgeWrapping;
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
+function vertexColorAt(wx, wz) {
+  const n = noise2(wx * 0.12, wz * 0.12);
+  const n2 = noise2(wx * 0.35 + 40, wz * 0.35 + 40);
+
+  if (isStonePath(wx, wz)) {
+    const blend = n * 0.5 + n2 * 0.3;
+    return STONE_DARK.clone().lerp(STONE_LIGHT, blend);
+  }
+
+  const color = GRASS_BASE.clone();
+  const variation = (n - 0.5) * GRASS_VARIATION + (n2 - 0.5) * 0.06;
+  color.offsetHSL(variation * 0.15, variation * 0.2, variation * 0.35);
+  return color;
 }
 
 export function createGround() {
-  const geometry = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
+  const geometry = new THREE.PlaneGeometry(
+    GROUND_SIZE,
+    GROUND_SIZE,
+    SEGMENTS,
+    SEGMENTS,
+  );
+  geometry.rotateX(-Math.PI / 2);
+
+  const positions = geometry.attributes.position;
+  const colors = new Float32Array(positions.count * 3);
+  const half = GROUND_SIZE / 2;
+
+  for (let i = 0; i < positions.count; i++) {
+    const wx = positions.getX(i);
+    const wz = positions.getZ(i);
+    const height = sampleGroundHeight(wx, wz);
+
+    positions.setY(i, height);
+
+    const color = vertexColorAt(wx, wz);
+    colors[i * 3] = color.r;
+    colors[i * 3 + 1] = color.g;
+    colors[i * 3 + 2] = color.b;
+  }
+
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.computeVertexNormals();
+
   const material = new THREE.MeshStandardMaterial({
-    map: createGroundTexture(),
-    roughness: 0.88,
+    vertexColors: true,
+    roughness: 0.9,
     metalness: 0.0,
+    flatShading: false,
   });
 
   const ground = new THREE.Mesh(geometry, material);
-  ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
 
   return ground;

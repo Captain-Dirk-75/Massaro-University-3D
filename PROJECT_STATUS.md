@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-29  
+**Last updated:** 2026-06-29 (procedural visuals pass)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-29 — Procedural campus visuals: instanced trees, extruded architecture, noise ground, rocks, tuned lighting/fog/bloom
 - 2026-06-29 — Sanctuary memberships moved to top; tiers side-by-side with included items listed
 - 2026-06-29 — Fixed C key opening customize while typing in Sage Grove chat
 - 2026-06-29 — Fixed avatar colour swatches + added Save profile button

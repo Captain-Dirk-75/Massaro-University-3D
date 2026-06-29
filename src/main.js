@@ -10,6 +10,7 @@ import { createLighting } from './world/lighting.js';
 import { createCampus } from './world/campusBuilder.js';
 import { createAreaGates } from './world/areaGates.js';
 import { createNature } from './world/nature.js';
+import { createRocks } from './world/rocks.js';
 import { createMotes } from './world/motes.js';
 import { createWorldAnimations } from './world/animations.js';
 import { createKiosk } from './world/kiosk.js';
@@ -58,6 +59,8 @@ async function bootstrap() {
 
   const { group: nature, swayTargets } = createNature();
   scene.add(nature);
+
+  scene.add(createRocks());
 
   const motes = createMotes();
   scene.add(motes.points);

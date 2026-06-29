@@ -1,136 +1,229 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { seededRandom, hashSeed } from './procedural/random.js';
+import { foliageColor, applyVertexColor } from './procedural/colors.js';
+import { sampleGroundHeight, isStonePath } from './ground.js';
 
 // ── Mood knobs ──
-export const FOLIAGE_SWAY_AMOUNT = 0.04;
-export const FOLIAGE_SWAY_SPEED = 0.7;
+export const FOLIAGE_SWAY_AMOUNT = 0.045;
+export const FOLIAGE_SWAY_SPEED = 0.65;
+export const TREE_COUNT_TARGET = 42;
+export const TRUNK_COLOR = 0x6b4f3e;
 
-const TRUNK_COLOR = 0x6a5040;
-const FOLIAGE_COLORS = [0x4a7a48, 0x5a8a52, 0x3d6a3c, 0x6a9a58];
+const TRUNK_MATERIAL = new THREE.MeshStandardMaterial({
+  color: TRUNK_COLOR,
+  roughness: 0.94,
+  metalness: 0.0,
+  flatShading: true,
+});
 
-function seededRandom(seed) {
-  let s = seed;
-  return () => {
-    s = (s * 16807 + 0) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
-}
+const FOLIAGE_MATERIAL = new THREE.MeshStandardMaterial({
+  vertexColors: true,
+  roughness: 0.92,
+  metalness: 0.0,
+  flatShading: true,
+});
 
 function isExcluded(wx, wz) {
+  if (isStonePath(wx, wz)) return true;
   if (wz < -10 && Math.abs(wx) < 18) return true;
   if (Math.hypot(wx, wz + 18) < 7) return true;
-  if (Math.abs(wx) < 4 && wz > -20 && wz < 20) return true;
-  if (Math.abs(wz) < 3.5 && Math.abs(wx) < 16) return true;
   return false;
 }
 
-function createTree(scale, seed) {
-  const tree = new THREE.Group();
+function buildCanopyGeometry(scale, seed) {
   const rand = seededRandom(seed);
+  const pieces = [];
+  const layers = 3 + Math.floor(rand() * 2);
 
-  const trunkH = (2.2 + rand() * 1.8) * scale;
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.12 * scale, 0.2 * scale, trunkH, 8),
-    new THREE.MeshStandardMaterial({ color: TRUNK_COLOR, roughness: 0.95 }),
-  );
-  trunk.position.y = trunkH / 2;
-  trunk.castShadow = true;
-  tree.add(trunk);
-
-  const foliageGroup = new THREE.Group();
-  foliageGroup.position.y = trunkH * 0.85;
-  foliageGroup.userData.swayPhase = rand() * Math.PI * 2;
-  foliageGroup.userData.swayAmount = FOLIAGE_SWAY_AMOUNT * (0.7 + rand() * 0.6);
-
-  const layers = 2 + Math.floor(rand() * 2);
   for (let i = 0; i < layers; i++) {
-    const radius = (1.4 - i * 0.25) * scale * (0.9 + rand() * 0.3);
-    const fol = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(radius, 1),
-      new THREE.MeshStandardMaterial({
-        color: FOLIAGE_COLORS[Math.floor(rand() * FOLIAGE_COLORS.length)],
-        roughness: 0.92,
-        flatShading: true,
-      }),
+    const radius = scale * (1.35 - i * 0.22) * (0.88 + rand() * 0.28);
+    const geo = new THREE.IcosahedronGeometry(radius, 1);
+    const color = foliageColor(rand, 0.1);
+    applyVertexColor(geo, color);
+
+    const matrix = new THREE.Matrix4();
+    matrix.makeTranslation(
+      (rand() - 0.5) * scale * 0.35,
+      i * scale * 0.42 + radius * 0.55,
+      (rand() - 0.5) * scale * 0.35,
     );
-    fol.position.y = i * 0.55 * scale;
-    fol.castShadow = true;
-    fol.receiveShadow = true;
-    foliageGroup.add(fol);
+    geo.applyMatrix4(matrix);
+    pieces.push(geo);
   }
 
-  tree.add(foliageGroup);
-  tree.userData.foliage = foliageGroup;
-
-  return tree;
+  return mergeGeometries(pieces, true);
 }
 
-function createBush(scale, seed) {
-  const bush = new THREE.Group();
-  const rand = seededRandom(seed);
-  const clusters = 2 + Math.floor(rand() * 2);
-
-  for (let i = 0; i < clusters; i++) {
-    const r = 0.35 * scale * (0.7 + rand() * 0.5);
-    const blob = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(r, 0),
-      new THREE.MeshStandardMaterial({
-        color: FOLIAGE_COLORS[Math.floor(rand() * FOLIAGE_COLORS.length)],
-        roughness: 0.95,
-        flatShading: true,
-      }),
-    );
-    blob.position.set(
-      (rand() - 0.5) * 0.6 * scale,
-      r * 0.6,
-      (rand() - 0.5) * 0.6 * scale,
-    );
-    blob.castShadow = true;
-    bush.add(blob);
-  }
-
-  bush.userData.swayPhase = rand() * Math.PI * 2;
-  bush.userData.swayAmount = FOLIAGE_SWAY_AMOUNT * 0.5;
-  return bush;
-}
-
-export function createNature() {
+function createTreeInstances(treeDefs) {
   const nature = new THREE.Group();
   const swayTargets = [];
-  const rand = seededRandom(42);
+  const trunkGeo = new THREE.CylinderGeometry(0.09, 0.2, 1, 7, 1);
+  const trunkMesh = new THREE.InstancedMesh(
+    trunkGeo,
+    TRUNK_MATERIAL,
+    treeDefs.length,
+  );
+  trunkMesh.castShadow = true;
+  trunkMesh.receiveShadow = true;
 
-  const treeSpots = [
-    [-22, 8], [-18, 18], [-14, -4], [-26, -2], [-20, -14],
-    [22, 8], [18, 16], [14, -6], [26, 0], [20, -12],
-    [-10, 22], [10, 22], [-8, -16], [8, -16], [0, 24],
-    [-30, 10], [30, 10], [-28, -10], [28, -8],
-  ];
+  const dummy = new THREE.Object3D();
 
-  for (let i = 0; i < treeSpots.length; i++) {
-    const [x, z] = treeSpots[i];
-    if (isExcluded(x, z)) continue;
+  for (let i = 0; i < treeDefs.length; i++) {
+    const { x, z, scale, seed, lean } = treeDefs[i];
+    const rand = seededRandom(seed);
+    const trunkH = (2.4 + rand() * 2.2) * scale;
+    const y = sampleGroundHeight(x, z);
 
-    const scale = 0.85 + rand() * 0.7;
-    const tree = createTree(scale, 100 + i);
-    tree.position.set(
-      x + (rand() - 0.5) * 2,
-      0,
-      z + (rand() - 0.5) * 2,
-    );
-    tree.rotation.y = rand() * Math.PI * 2;
-    nature.add(tree);
-    swayTargets.push(tree.userData.foliage);
+    dummy.position.set(x, y, z);
+    dummy.rotation.set(lean.x, rand() * Math.PI * 2, lean.z);
+    dummy.scale.set(scale, trunkH, scale);
+    dummy.updateMatrix();
+    trunkMesh.setMatrixAt(i, dummy.matrix);
+
+    const foliageGeo = buildCanopyGeometry(scale, seed + 17);
+    const foliage = new THREE.Mesh(foliageGeo, FOLIAGE_MATERIAL);
+    foliage.position.set(x, y + trunkH * 0.82, z);
+    foliage.rotation.copy(dummy.rotation);
+    foliage.castShadow = true;
+    foliage.receiveShadow = true;
+    foliage.userData.swayPhase = rand() * Math.PI * 2;
+    foliage.userData.swayAmount = FOLIAGE_SWAY_AMOUNT * (0.65 + rand() * 0.7);
+    nature.add(foliage);
+    swayTargets.push(foliage);
   }
 
-  for (let i = 0; i < 28; i++) {
-    const x = (rand() - 0.5) * 50;
-    const z = (rand() - 0.5) * 44;
-    if (isExcluded(x, z)) continue;
+  trunkMesh.instanceMatrix.needsUpdate = true;
+  nature.add(trunkMesh);
 
-    const bush = createBush(0.6 + rand() * 0.5, 200 + i);
-    bush.position.set(x, 0, z);
-    nature.add(bush);
+  return { group: nature, swayTargets };
+}
+
+function createBushInstances(bushDefs) {
+  const group = new THREE.Group();
+  const swayTargets = [];
+
+  for (const def of bushDefs) {
+    const { x, z, scale, seed } = def;
+    const rand = seededRandom(seed);
+    const clusters = 2 + Math.floor(rand() * 2);
+    const y = sampleGroundHeight(x, z);
+    const pieces = [];
+
+    for (let c = 0; c < clusters; c++) {
+      const r = scale * (0.32 + rand() * 0.28);
+      const geo = new THREE.IcosahedronGeometry(r, 0);
+      applyVertexColor(geo, foliageColor(rand, 0.06));
+
+      const matrix = new THREE.Matrix4();
+      matrix.setPosition(
+        (rand() - 0.5) * scale * 0.7,
+        r * 0.55,
+        (rand() - 0.5) * scale * 0.7,
+      );
+      geo.applyMatrix4(matrix);
+      pieces.push(geo);
+    }
+
+    const bush = new THREE.Mesh(mergeGeometries(pieces, true), FOLIAGE_MATERIAL);
+    bush.position.set(x, y, z);
+    bush.castShadow = true;
+    bush.receiveShadow = true;
+    bush.userData.swayPhase = rand() * Math.PI * 2;
+    bush.userData.swayAmount = FOLIAGE_SWAY_AMOUNT * 0.45;
+    group.add(bush);
     swayTargets.push(bush);
   }
 
-  return { group: nature, swayTargets };
+  return { group, swayTargets };
+}
+
+function scatterTrees() {
+  const rand = seededRandom(42);
+  const trees = [];
+  const anchorSpots = [
+    [-24, 10], [-20, 20], [-16, -2], [-28, -4], [-22, -16],
+    [24, 10], [20, 18], [16, -4], [28, 2], [22, -14],
+    [-12, 24], [12, 24], [-10, -18], [10, -18], [0, 26],
+    [-32, 12], [32, 12], [-30, -12], [30, -10],
+    [-36, 0], [36, 0], [-8, 14], [8, 14],
+  ];
+
+  for (const [ax, az] of anchorSpots) {
+    const x = ax + (rand() - 0.5) * 3.5;
+    const z = az + (rand() - 0.5) * 3.5;
+    if (isExcluded(x, z)) continue;
+
+    trees.push({
+      x,
+      z,
+      scale: 0.9 + rand() * 0.75,
+      seed: hashSeed(x, z),
+      lean: {
+        x: (rand() - 0.5) * 0.06,
+        z: (rand() - 0.5) * 0.06,
+      },
+    });
+  }
+
+  while (trees.length < TREE_COUNT_TARGET) {
+    const x = (rand() - 0.5) * 58;
+    const z = (rand() - 0.5) * 52;
+    if (isExcluded(x, z)) continue;
+
+    const tooClose = trees.some(
+      (t) => Math.hypot(t.x - x, t.z - z) < 3.2,
+    );
+    if (tooClose) continue;
+
+    trees.push({
+      x,
+      z,
+      scale: 0.75 + rand() * 0.65,
+      seed: hashSeed(x, z) + trees.length,
+      lean: {
+        x: (rand() - 0.5) * 0.08,
+        z: (rand() - 0.5) * 0.08,
+      },
+    });
+  }
+
+  return trees;
+}
+
+function scatterBushes() {
+  const rand = seededRandom(200);
+  const bushes = [];
+
+  for (let i = 0; i < 32; i++) {
+    const x = (rand() - 0.5) * 54;
+    const z = (rand() - 0.5) * 48;
+    if (isExcluded(x, z)) continue;
+
+    bushes.push({
+      x,
+      z,
+      scale: 0.55 + rand() * 0.55,
+      seed: 300 + i,
+    });
+  }
+
+  return bushes;
+}
+
+export function createNature() {
+  const trees = scatterTrees();
+  const bushes = scatterBushes();
+
+  const treeResult = createTreeInstances(trees);
+  const bushResult = createBushInstances(bushes);
+
+  const group = new THREE.Group();
+  group.add(treeResult.group);
+  group.add(bushResult.group);
+
+  return {
+    group,
+    swayTargets: [...treeResult.swayTargets, ...bushResult.swayTargets],
+  };
 }

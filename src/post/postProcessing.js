@@ -6,11 +6,11 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 // ── Mood knobs — tweak these to shift the cinematic feel ──
-export const BLOOM_STRENGTH = 0.32;
-export const BLOOM_RADIUS = 0.42;
-export const BLOOM_THRESHOLD = 0.82;
-export const COLOR_WARMTH = 0.18;
-export const COLOR_SATURATION = 1.08;
+export const BLOOM_STRENGTH = 0.38;
+export const BLOOM_RADIUS = 0.48;
+export const BLOOM_THRESHOLD = 0.78;
+export const COLOR_WARMTH = 0.22;
+export const COLOR_SATURATION = 1.1;
 
 const WarmGradeShader = {
   uniforms: {
