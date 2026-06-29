@@ -147,6 +147,8 @@ function buildShell(room) {
           mesh: glass,
           localPosition: new THREE.Vector3(wx, wy, wz - side * 0.2),
           outwardNormal: new THREE.Vector3(0, 0, side),
+          wallKey: `${side > 0 ? 'south' : 'north'}-${floorIdx}`,
+          wallX: wx,
         });
       }
     }

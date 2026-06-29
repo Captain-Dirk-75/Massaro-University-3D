@@ -1,96 +1,127 @@
 import * as THREE from 'three';
 
-const CUBE_MAP_SIZE = 512;
+const RT_HEIGHT = 480;
+const WINDOW_W = 3.0;
+const WINDOW_H = 2.2;
+const V_FOV = 42;
 
 /**
- * Shared cubemap sampled by every window — one consistent outdoor world (one sun, one pool).
+ * One outdoor render per wall row; each pane shows a slice (continuous panorama).
  */
-const WindowViewShader = {
-  uniforms: {
-    tCube: { value: null },
-    cubeOrigin: { value: new THREE.Vector3() },
-  },
-  vertexShader: /* glsl */ `
-    varying vec3 vWorldPos;
-    void main() {
-      vec4 worldPos = modelMatrix * vec4(position, 1.0);
-      vWorldPos = worldPos.xyz;
-      gl_Position = projectionMatrix * viewMatrix * worldPos;
-    }
-  `,
-  fragmentShader: /* glsl */ `
-    uniform samplerCube tCube;
-    uniform vec3 cubeOrigin;
-    varying vec3 vWorldPos;
-
-    void main() {
-      vec3 dir = normalize(vWorldPos - cubeOrigin);
-      vec3 color = texture(tCube, dir).rgb;
-      gl_FragColor = vec4(color, 1.0);
-    }
-  `,
-};
-
 export function createInteriorWindowViews({ outdoorScene, outdoorRoot, renderer }) {
-  const views = [];
-  const cubeOrigin = new THREE.Vector3();
-  let cubeRenderTarget = null;
-  let cubeCamera = null;
-  let sharedMaterial = null;
+  /** @type {Map<string, { rt: THREE.WebGLRenderTarget, camera: THREE.PerspectiveCamera, meshes: THREE.Mesh[] }>} */
+  const wallGroups = new Map();
+  const pending = [];
+  const worldOffset = new THREE.Vector3();
+  const lookTarget = new THREE.Vector3();
+  let finalized = false;
 
-  function ensureCubeResources() {
-    if (cubeRenderTarget) return;
-    cubeRenderTarget = new THREE.WebGLCubeRenderTarget(CUBE_MAP_SIZE);
-    cubeRenderTarget.texture.colorSpace = THREE.SRGBColorSpace;
-    cubeCamera = new THREE.CubeCamera(0.5, 220, cubeRenderTarget);
-    sharedMaterial = new THREE.ShaderMaterial({
-      uniforms: THREE.UniformsUtils.clone(WindowViewShader.uniforms),
-      vertexShader: WindowViewShader.vertexShader,
-      fragmentShader: WindowViewShader.fragmentShader,
-      depthWrite: false,
-      depthTest: true,
-      side: THREE.DoubleSide,
+  function registerWindow(mesh, localPosition, outwardNormal, offset, meta = {}) {
+    pending.push({
+      mesh,
+      localPosition: localPosition.clone(),
+      outwardNormal: outwardNormal.clone(),
+      wallKey: meta.wallKey ?? 'default',
+      wallX: meta.wallX ?? 0,
     });
-    sharedMaterial.uniforms.tCube.value = cubeRenderTarget.texture;
+    worldOffset.copy(offset);
   }
 
-  function registerWindow(mesh, _localPosition, _outwardNormal, offset) {
-    ensureCubeResources();
+  function finalize() {
+    if (finalized) return;
+    finalized = true;
 
-    cubeOrigin.set(offset.x, offset.y + 3.2, offset.z);
-    sharedMaterial.uniforms.cubeOrigin.value.copy(cubeOrigin);
+    const grouped = new Map();
+    for (const entry of pending) {
+      if (!grouped.has(entry.wallKey)) grouped.set(entry.wallKey, []);
+      grouped.get(entry.wallKey).push(entry);
+    }
 
-    mesh.material = sharedMaterial;
-    mesh.renderOrder = 2;
-    views.push({ mesh });
+    for (const [wallKey, entries] of grouped) {
+      entries.sort((a, b) => a.wallX - b.wallX);
+      const count = entries.length;
+      const rtWidth = Math.round(RT_HEIGHT * ((WINDOW_W * count) / WINDOW_H));
+
+      const rt = new THREE.WebGLRenderTarget(rtWidth, RT_HEIGHT, {
+        generateMipmaps: false,
+        depthBuffer: true,
+      });
+      rt.texture.colorSpace = THREE.SRGBColorSpace;
+      rt.texture.flipY = false;
+
+      const aspect = rtWidth / RT_HEIGHT;
+      const camera = new THREE.PerspectiveCamera(V_FOV, aspect, 0.5, 200);
+
+      const ref = entries[0];
+      const camPos = new THREE.Vector3(0, ref.localPosition.y, ref.localPosition.z);
+      camera.position.copy(camPos).add(worldOffset);
+      lookTarget.copy(camera.position).add(ref.outwardNormal);
+      camera.lookAt(lookTarget);
+
+      wallGroups.set(wallKey, { rt, camera, meshes: [] });
+
+      const sliceW = 1 / count;
+
+      entries.forEach((entry, index) => {
+        const map = rt.texture.clone();
+        map.repeat.set(sliceW, 1);
+        map.offset.set(index * sliceW, 0);
+        map.wrapS = THREE.ClampToEdgeWrapping;
+        map.wrapT = THREE.ClampToEdgeWrapping;
+
+        entry.mesh.material = new THREE.MeshBasicMaterial({
+          map,
+          toneMapped: false,
+          depthWrite: false,
+          depthTest: true,
+          side: THREE.DoubleSide,
+        });
+        entry.mesh.renderOrder = 2;
+        wallGroups.get(wallKey).meshes.push(entry.mesh);
+      });
+    }
+
+    pending.length = 0;
   }
 
   function update() {
-    if (views.length === 0 || !cubeCamera) return;
+    if (!finalized) finalize();
+    if (wallGroups.size === 0) return;
 
+    const prevTarget = renderer.getRenderTarget();
+    const prevAutoClear = renderer.autoClear;
     const prevToneMapping = renderer.toneMapping;
 
     outdoorRoot.visible = true;
+    renderer.autoClear = true;
     renderer.toneMapping = THREE.NoToneMapping;
 
-    cubeCamera.position.copy(cubeOrigin);
-    cubeCamera.update(renderer, outdoorScene);
+    for (const { rt, camera } of wallGroups.values()) {
+      camera.updateMatrixWorld(true);
+      renderer.setRenderTarget(rt);
+      renderer.setViewport(0, 0, rt.width, rt.height);
+      renderer.clear();
+      renderer.render(outdoorScene, camera);
+    }
 
+    renderer.setRenderTarget(prevTarget);
+    renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+    renderer.autoClear = prevAutoClear;
     renderer.toneMapping = prevToneMapping;
     outdoorRoot.visible = false;
   }
 
   function dispose() {
-    for (const view of views) {
-      view.mesh.material = new THREE.MeshBasicMaterial({ color: 0x888888 });
+    for (const { rt, meshes } of wallGroups.values()) {
+      for (const mesh of meshes) {
+        mesh.material.dispose();
+      }
+      rt.dispose();
     }
-    views.length = 0;
-    sharedMaterial?.dispose();
-    cubeRenderTarget?.dispose();
-    sharedMaterial = null;
-    cubeRenderTarget = null;
-    cubeCamera = null;
+    wallGroups.clear();
+    pending.length = 0;
+    finalized = false;
   }
 
-  return { registerWindow, update, dispose };
+  return { registerWindow, finalize, update, dispose };
 }

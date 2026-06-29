@@ -45,8 +45,12 @@ export function createInteriorManager({
         def.worldOffset?.z ?? 0,
       );
       for (const slot of result.windows ?? []) {
-        windowViews.registerWindow(slot.mesh, slot.localPosition, slot.outwardNormal, offset);
+        windowViews.registerWindow(slot.mesh, slot.localPosition, slot.outwardNormal, offset, {
+          wallKey: slot.wallKey,
+          wallX: slot.wallX,
+        });
       }
+      windowViews.finalize();
 
       indoorScene.add(result.group);
       built.set(def.id, result);
