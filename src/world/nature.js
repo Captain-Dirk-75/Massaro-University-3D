@@ -486,5 +486,11 @@ export function createNature() {
   group.add(bushResult.group);
   swayTargets.push(...bushResult.swayTargets);
 
-  return { group, swayTargets, perches };
+  const treeColliders = treeDefs.map((def) => ({
+    x: def.x,
+    z: def.z,
+    r: def.scale * 0.5,
+  }));
+
+  return { group, swayTargets, perches, treeColliders };
 }

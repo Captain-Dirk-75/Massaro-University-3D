@@ -39,6 +39,7 @@ function isRockExcluded(wx, wz) {
 
 export function createRocks() {
   const group = new THREE.Group();
+  const colliders = [];
   const rand = seededRandom(7711);
   const geometries = [];
 
@@ -74,10 +75,11 @@ export function createRocks() {
     matrix.setPosition(wx, y + scale * 0.35, wz);
     geo.applyMatrix4(matrix);
     geometries.push(geo);
+    colliders.push({ x: wx, z: wz, r: scale * 0.55 });
   }
 
   if (geometries.length === 0) {
-    return group;
+    return { group, colliders };
   }
 
   const merged = mergeGeometries(geometries, false);
@@ -95,5 +97,5 @@ export function createRocks() {
   rocks.receiveShadow = true;
   group.add(rocks);
 
-  return group;
+  return { group, colliders };
 }

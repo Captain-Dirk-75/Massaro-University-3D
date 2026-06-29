@@ -1,11 +1,12 @@
 import * as THREE from 'three';
+import { applyCollisionMovement } from './collisions.js';
 
 const MOVE_SPEED = 5;
 const LOOK_SENSITIVITY = 0.002;
 const PLAYER_HEIGHT = 1.7;
 const PITCH_LIMIT = Math.PI / 2 - 0.01;
 
-export function createFirstPersonControls(camera, canvas, { onLockChange }) {
+export function createFirstPersonControls(camera, canvas, { onLockChange, colliders } = {}) {
   const keys = new Set();
   let yaw = 0;
   let pitch = 0;
@@ -64,7 +65,7 @@ export function createFirstPersonControls(camera, canvas, { onLockChange }) {
 
     if (move.lengthSq() > 0) {
       move.normalize().multiplyScalar(MOVE_SPEED * delta);
-      camera.position.add(move);
+      applyCollisionMovement(camera, move, colliders);
     }
 
     camera.position.y = PLAYER_HEIGHT;

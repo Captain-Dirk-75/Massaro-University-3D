@@ -3,6 +3,7 @@ import { createRenderer, handleResize } from './core/renderer.js';
 import { createCamera } from './core/camera.js';
 import { createRenderLoop } from './core/loop.js';
 import { createFirstPersonControls } from './controls/firstPerson.js';
+import { createWorldColliders } from './world/collisionVolumes.js';
 import { createInteractionSystem } from './controls/interaction.js';
 import { applyAtmosphere } from './world/atmosphere.js';
 import { createGround } from './world/ground.js';
@@ -60,10 +61,17 @@ async function bootstrap() {
   const campus = createCampus();
   scene.add(campus.root);
 
-  const { group: nature, swayTargets, perches: treePerches } = createNature();
+  const { group: nature, swayTargets, perches: treePerches, treeColliders } =
+    createNature();
   scene.add(nature);
 
-  scene.add(createRocks());
+  const rocks = createRocks();
+  scene.add(rocks.group);
+
+  const worldColliders = createWorldColliders({
+    treeColliders,
+    rockColliders: rocks.colliders,
+  });
 
   const { group: cloudGroup, clouds } = createClouds();
   scene.add(cloudGroup);
@@ -162,6 +170,7 @@ async function bootstrap() {
   });
 
   const controls = createFirstPersonControls(camera, canvas, {
+    colliders: worldColliders,
     onLockChange(locked) {
       appState.pointerLocked = locked;
       canvas.classList.toggle('is-locked', locked);
