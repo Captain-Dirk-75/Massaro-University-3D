@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { applyCollisionMovement } from './collisions.js';
 
+const STAIR_SNAP_LOW = 0.08;
+const STAIR_SNAP_HIGH_OFFSET = 0.15;
+
 const MOVE_SPEED = 5;
 const LOOK_SENSITIVITY = 0.002;
 const PLAYER_HEIGHT = 1.7;
@@ -64,8 +67,13 @@ export function createFirstPersonControls(camera, canvas, { onLockChange, collid
     if (keys.has('KeyD')) move.add(right);
     if (keys.has('KeyA')) move.sub(right);
 
-    const floorY = getFloorY ? getFloorY(camera.position.x, camera.position.z) : 0;
-    const floorLevel = floorY >= 1.5 ? 'upper' : 'ground';
+    const floorY = getFloorY
+      ? getFloorY(camera.position.x, camera.position.z, camera.position.y)
+      : 0;
+    const storyHeight = 4.0;
+    const onStair =
+      floorY > STAIR_SNAP_LOW && floorY < storyHeight - STAIR_SNAP_HIGH_OFFSET;
+    const floorLevel = onStair ? 'stair' : floorY >= 3.0 ? 'upper' : 'ground';
 
     if (move.lengthSq() > 0) {
       move.normalize().multiplyScalar(MOVE_SPEED * delta);

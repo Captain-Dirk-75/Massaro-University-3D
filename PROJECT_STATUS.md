@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-29 (library interior fixes)
+**Last updated:** 2026-06-29 (two-story classical library)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-29 — Two-story classical library interior: 8.4m height, gallery upper floor, fixed windows + stairs
 - 2026-06-29 — Library interior: visible exit doorway, live window views (outdoor RT), walkable second-floor mezzanine
 - 2026-06-29 — Fix library approach: collision gap at portico, flipped exterior stairs, horizontal E-prompt distance
 - 2026-06-29 — Walkable building interiors: data-driven scene swap, library furnished interior (E to enter/exit)

@@ -141,7 +141,7 @@ export function createInteriorManager({
   }
 
   function resolveFloorY(x, z) {
-    return getFloorY ? getFloorY(x, z) : 0;
+    return getFloorY ? getFloorY(x, z, camera.position.y) : 0;
   }
 
   function createEntranceTargets() {

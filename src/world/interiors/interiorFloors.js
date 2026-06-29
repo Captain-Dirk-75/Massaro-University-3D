@@ -1,30 +1,17 @@
 import * as THREE from 'three';
 
-export const LIBRARY_SECOND_FLOOR_Y = 2.2;
+/** Height of each story (floor surface to floor surface). */
+export const LIBRARY_STORY_HEIGHT = 4.0;
+
+/** Eye-level threshold for upper-floor collision + snapping. */
+export const LIBRARY_UPPER_THRESHOLD = 3.0;
 
 const STAIR = {
-  minX: -11.6,
-  maxX: -8.4,
-  bottomZ: -6,
-  topZ: -10.2,
-  rise: LIBRARY_SECOND_FLOOR_Y,
+  minX: -12.8,
+  maxX: -10.2,
+  bottomZ: 5.5,
+  topZ: -3.2,
 };
-
-const MEZZANINE = {
-  minX: -13.4,
-  maxX: -3.6,
-  minZ: -11.8,
-  maxZ: -1.8,
-};
-
-function onMezzanine(x, z) {
-  return (
-    x >= MEZZANINE.minX &&
-    x <= MEZZANINE.maxX &&
-    z >= MEZZANINE.minZ &&
-    z <= MEZZANINE.maxZ
-  );
-}
 
 function onStaircase(x, z) {
   return (
@@ -38,22 +25,24 @@ function onStaircase(x, z) {
 function stairFloorY(z) {
   const run = STAIR.bottomZ - STAIR.topZ;
   const progress = THREE.MathUtils.clamp((STAIR.bottomZ - z) / run, 0, 1);
-  return progress * STAIR.rise;
+  return progress * LIBRARY_STORY_HEIGHT;
 }
 
 /**
  * Returns ground elevation (metres) for library interior local XZ.
+ * Uses current camera Y to stay on the correct story when XZ overlaps both floors.
  */
-export function getLibraryFloorY(x, z) {
+export function getLibraryFloorY(x, z, currentY = 1.7) {
   if (onStaircase(x, z)) {
     return stairFloorY(z);
   }
-  if (onMezzanine(x, z)) {
-    return LIBRARY_SECOND_FLOOR_Y;
+
+  if (currentY >= LIBRARY_UPPER_THRESHOLD) {
+    return LIBRARY_STORY_HEIGHT;
   }
   return 0;
 }
 
 export function getLibraryFloorLevel(floorY) {
-  return floorY >= LIBRARY_SECOND_FLOOR_Y - 0.15 ? 'upper' : 'ground';
+  return floorY >= LIBRARY_STORY_HEIGHT - 0.2 ? 'upper' : 'ground';
 }

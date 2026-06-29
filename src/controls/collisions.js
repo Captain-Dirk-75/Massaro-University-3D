@@ -4,6 +4,9 @@ function clamp(value, min, max) {
 
 function boxApplies(box, floorLevel) {
   if (!box.level || box.level === 'all') return true;
+  if (floorLevel === 'stair') {
+    return box.boundary === true;
+  }
   return box.level === floorLevel;
 }
 
