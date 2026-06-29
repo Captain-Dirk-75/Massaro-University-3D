@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CAMPUS_AREAS } from '../content/campus.js';
+import { getCachedCampusAreas } from '../platform/index.js';
 import { buildLibrary } from './library.js';
 import { buildWaterFeature } from './waterFeature.js';
 import { buildPatronGarden } from './builders/patronGarden.js';
@@ -13,17 +13,18 @@ const BUILDERS = {
 };
 
 /**
- * Generate the campus from CAMPUS_AREAS data.
+ * Generate the campus from platform campus-area data.
  */
 export function createCampus() {
   const root = new THREE.Group();
   let waterMaterial = null;
+  const campusAreas = getCachedCampusAreas();
 
-  const gatedAreas = CAMPUS_AREAS.filter(
+  const gatedAreas = campusAreas.filter(
     (area) => area.access !== 'open' && area.build,
   );
 
-  for (const area of CAMPUS_AREAS) {
+  for (const area of campusAreas) {
     if (!area.build) continue;
 
     const builder = BUILDERS[area.build];
@@ -41,7 +42,7 @@ export function createCampus() {
 
   return {
     root,
-    areas: CAMPUS_AREAS,
+    areas: campusAreas,
     gatedAreas,
     waterMaterial,
   };

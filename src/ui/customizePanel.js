@@ -6,7 +6,6 @@ import {
   updateProfile,
   resetToDefaults,
 } from '../state/playerState.js';
-import { clear as clearStorage } from '../state/persistence.js';
 
 function formatCampusTime(seconds) {
   const total = Math.floor(seconds);
@@ -312,8 +311,7 @@ export function createCustomizePanel({ onChange, onOpenChange }) {
   });
 
   panel.querySelector('#reset-profile').addEventListener('click', async () => {
-    await clearStorage();
-    resetToDefaults();
+    await resetToDefaults();
     syncFormFromState();
     emitChange();
   });

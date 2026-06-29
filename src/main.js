@@ -20,7 +20,7 @@ import { createCustomizePanel } from './ui/customizePanel.js';
 import { createStorePanel } from './ui/storePanel.js';
 import { createGuidePanel } from './ui/guidePanel.js';
 import { createPlayerAvatar } from './avatar/playerAvatar.js';
-import { load } from './state/persistence.js';
+import { bootstrapPlatform, getCurrentUser } from './platform/index.js';
 import {
   playerState,
   applyPlayerState,
@@ -40,10 +40,9 @@ function isUiBlocking() {
 async function bootstrap() {
   const canvas = document.getElementById('canvas');
 
-  const saved = await load();
-  if (saved) {
-    applyPlayerState(saved);
-  }
+  await bootstrapPlatform();
+  const user = await getCurrentUser();
+  applyPlayerState(user);
 
   const scene = createScene();
   applyAtmosphere(scene);
@@ -195,7 +194,7 @@ async function bootstrap() {
       sessionSaveTimer += delta;
       if (sessionSaveTimer >= 30) {
         sessionSaveTimer = 0;
-        persist();
+        void persist();
         if (customizePanel.isOpen()) {
           customizePanel.updateSessionDisplay();
         }

@@ -1,4 +1,4 @@
-import { getItemById, getTierById } from '../content/catalog.js';
+import { findCatalogItemById, findTierById } from '../platform/index.js';
 
 function formatCampusTime(seconds) {
   const total = Math.floor(seconds);
@@ -14,10 +14,10 @@ function formatCampusTime(seconds) {
  */
 export function buildGuideContext(playerState) {
   const { profile, commerce, session } = playerState;
-  const tier = getTierById(commerce.activeTierId ?? 'guest');
+  const tier = findTierById(commerce.activeTierId ?? 'guest');
 
   const ownedItems = (commerce.ownedItemIds ?? [])
-    .map((id) => getItemById(id))
+    .map((id) => findCatalogItemById(id))
     .filter(Boolean)
     .map((item) => ({ id: item.id, title: item.title, type: item.type }));
 

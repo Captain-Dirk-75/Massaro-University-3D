@@ -1,5 +1,7 @@
 /**
- * ── EDIT REAL MASSARO CONTENT HERE ──
+ * ── EDIT REAL MASSARO CONTENT HERE (local mode seed data) ──
+ * Consumed only by src/platform/adapters/local.js — the rest of the app
+ * reads catalog data via src/platform/.
  * All sellable items and membership tiers live in this file.
  * Prices below are PLACEHOLDER examples — replace with real pricing.
  */

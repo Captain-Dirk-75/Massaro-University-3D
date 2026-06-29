@@ -1,6 +1,6 @@
 /**
- * Storage adapter — swap this module when moving to a real backend.
- * Everything else talks to playerState + these three functions only.
+ * @deprecated Internal storage — only used by src/platform/adapters/local.js.
+ * The rest of the app must use src/platform/index.js instead.
  */
 import { DEFAULT_PLAYER_STATE } from './defaults.js';
 
@@ -20,9 +20,6 @@ function writeRaw(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-/**
- * Load saved state or return null if nothing valid is stored.
- */
 export async function load() {
   const raw = readRaw();
   if (!raw || typeof raw !== 'object') return null;
@@ -46,16 +43,10 @@ export async function load() {
   };
 }
 
-/**
- * Persist the full player state object.
- */
 export async function save(state) {
   writeRaw(structuredClone(state));
 }
 
-/**
- * Remove stored data entirely.
- */
 export async function clear() {
   localStorage.removeItem(STORAGE_KEY);
 }

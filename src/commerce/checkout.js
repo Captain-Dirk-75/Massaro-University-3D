@@ -1,15 +1,12 @@
-import { getItemById, getTierById } from '../content/catalog.js';
+import { findCatalogItemById, findTierById } from '../platform/index.js';
 
 /**
- * ── SWAP THESE FOR A REAL PAYMENT BACKEND LATER ──
- * UI and state call only these two functions for transactions.
+ * ── CHECKOUT SEAM — simulated today; payment processor replaces delay only ──
+ * Recording ownership goes through src/platform/ (recordPurchase / recordSubscription).
  */
 
-/**
- * Simulated individual purchase. Replace internals with Stripe/etc.
- */
 export async function purchaseItem(itemId) {
-  const item = getItemById(itemId);
+  const item = findCatalogItemById(itemId);
   if (!item) {
     return { success: false, error: 'Item not found.' };
   }
@@ -30,11 +27,8 @@ export async function purchaseItem(itemId) {
   };
 }
 
-/**
- * Simulated tier subscription. Replace internals with Stripe/etc.
- */
 export async function subscribeToTier(tierId, period) {
-  const tier = getTierById(tierId);
+  const tier = findTierById(tierId);
   if (!tier) {
     return { success: false, error: 'Membership tier not found.' };
   }

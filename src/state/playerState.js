@@ -1,9 +1,16 @@
 /**
- * Persisted player identity + session + commerce — single source of truth.
- * Mutate via the helpers below; persistence.save() is called automatically.
+ * In-memory player state — runtime source of truth during a session.
+ * Persistence and static data go through src/platform/ only.
  */
 import { DEFAULT_PLAYER_STATE } from './defaults.js';
-import { save } from './persistence.js';
+import {
+  getCurrentUser,
+  saveCurrentUser,
+  clearCurrentUser,
+  recordPurchase,
+  recordSubscription,
+  applyEntitlementsToState,
+} from '../platform/index.js';
 
 export { DEFAULT_PLAYER_STATE };
 
@@ -22,35 +29,32 @@ export function applyPlayerState(loaded) {
   }
 }
 
-export function updateProfile(changes) {
+export async function updateProfile(changes) {
   Object.assign(playerState.profile, changes);
-  persist();
+  await persist();
 }
 
 export function addCampusTime(seconds) {
   playerState.session.totalTimeOnCampus += seconds;
 }
 
-export function recordItemPurchase(itemId) {
-  if (!playerState.commerce.ownedItemIds.includes(itemId)) {
-    playerState.commerce.ownedItemIds.push(itemId);
-  }
-  persist();
+export async function recordItemPurchase(itemId) {
+  const entitlements = await recordPurchase(itemId);
+  applyEntitlementsToState(playerState, entitlements);
 }
 
-export function setSubscription(tierId, period) {
-  playerState.commerce.activeTierId = tierId;
-  playerState.commerce.subscriptionPeriod = period;
-  persist();
+export async function setSubscription(tierId, period) {
+  const entitlements = await recordSubscription(tierId, period);
+  applyEntitlementsToState(playerState, entitlements);
 }
 
-export function persist() {
-  save(playerState);
+export async function persist() {
+  await saveCurrentUser(playerState);
 }
 
-export function resetToDefaults() {
-  const fresh = structuredClone(DEFAULT_PLAYER_STATE);
-  Object.assign(playerState, fresh);
-  persist();
+export async function resetToDefaults() {
+  await clearCurrentUser();
+  const user = await getCurrentUser();
+  applyPlayerState(user);
   return playerState;
 }

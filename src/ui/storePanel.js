@@ -1,12 +1,12 @@
 import {
-  CONTENT_TYPES,
-  ITEMS,
-  TIERS,
-  getItemById,
-  getTierById,
-} from '../content/catalog.js';
+  getCachedCatalogItems,
+  getCachedTiers,
+  getCachedContentTypes,
+  findCatalogItemById,
+  findTierById,
+} from '../platform/index.js';
 import { hasAccess, getAccessLabel } from '../commerce/access.js';
-import { purchaseItem, subscribeToTier } from '../commerce/purchase.js';
+import { purchaseItem, subscribeToTier } from '../commerce/checkout.js';
 import {
   playerState,
   recordItemPurchase,
@@ -19,7 +19,7 @@ function formatPrice(amount) {
 }
 
 function tierLabel(tierId) {
-  return getTierById(tierId)?.name ?? tierId;
+  return findTierById(tierId)?.name ?? tierId;
 }
 
 export function createStorePanel({ onOpenChange, onCommerceChange }) {
@@ -309,9 +309,12 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
   }
 
   function renderCatalog() {
-    const activeTier = getTierById(playerState.commerce.activeTierId);
-    const typeKeys = Object.keys(CONTENT_TYPES).sort(
-      (a, b) => CONTENT_TYPES[a].order - CONTENT_TYPES[b].order,
+    const contentTypes = getCachedContentTypes();
+    const catalogItems = getCachedCatalogItems();
+    const tiers = getCachedTiers();
+    const activeTier = findTierById(playerState.commerce.activeTierId);
+    const typeKeys = Object.keys(contentTypes).sort(
+      (a, b) => contentTypes[a].order - contentTypes[b].order,
     );
 
     let html = '';
@@ -324,8 +327,8 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
     }
 
     for (const typeKey of typeKeys) {
-      const typeInfo = CONTENT_TYPES[typeKey];
-      const items = ITEMS.filter((item) => item.type === typeKey);
+      const typeInfo = contentTypes[typeKey];
+      const items = catalogItems.filter((item) => item.type === typeKey);
       if (items.length === 0) continue;
 
       html += `<section class="store-section">
@@ -363,7 +366,7 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
     html += `<section class="store-section">
       <h3 class="store-section__title">Memberships</h3>`;
 
-    for (const tier of TIERS) {
+    for (const tier of tiers) {
       if (tier.id === 'guest') continue;
 
       const isActive = playerState.commerce.activeTierId === tier.id;
@@ -395,7 +398,7 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
   }
 
   function renderItemDetail(itemId) {
-    const item = getItemById(itemId);
+    const item = findCatalogItemById(itemId);
     if (!item) {
       view = { mode: 'catalog' };
       renderCatalog();
@@ -410,7 +413,7 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
         <button type="button" class="store-btn store-btn--secondary store-detail__back" data-back-catalog>← Back to catalog</button>
         <h3 class="store-detail__title">${item.title}</h3>
         <p class="store-detail__desc">${item.description}</p>
-        <p class="store-item__meta">Type: ${CONTENT_TYPES[item.type].label}</p>
+        <p class="store-item__meta">Type: ${getCachedContentTypes()[item.type].label}</p>
         <p class="store-item__meta">Price: ${formatPrice(item.individualPrice)} · Included with: ${item.includedInTiers.map(tierLabel).join(', ')}</p>
         <div class="store-detail__access store-detail__access--${entitled ? 'granted' : 'locked'}">
           ${entitled
@@ -430,7 +433,7 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
   }
 
   function renderConfirmPurchase(itemId) {
-    const item = getItemById(itemId);
+    const item = findCatalogItemById(itemId);
     body.innerHTML = `
       <div class="store-confirm">
         <button type="button" class="store-btn store-btn--secondary store-detail__back" data-back-catalog>← Cancel</button>
@@ -444,7 +447,7 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
   }
 
   function renderConfirmSubscribe(tierId, period) {
-    const tier = getTierById(tierId);
+    const tier = findTierById(tierId);
     const amount = period === 'monthly' ? tier?.monthlyPrice : tier?.yearlyPrice;
     body.innerHTML = `
       <div class="store-confirm">
@@ -500,7 +503,7 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
     if (confirmBuy) {
       const result = await purchaseItem(confirmBuy);
       if (result.success) {
-        recordItemPurchase(result.itemId);
+        await recordItemPurchase(result.itemId);
         notifyCommerce();
         view = { mode: 'item', itemId: result.itemId };
       } else {
@@ -515,7 +518,7 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
     if (confirmSub && subPeriod) {
       const result = await subscribeToTier(confirmSub, subPeriod);
       if (result.success) {
-        setSubscription(result.tierId, result.period);
+        await setSubscription(result.tierId, result.period);
         notifyCommerce();
         view = { mode: 'catalog' };
       }

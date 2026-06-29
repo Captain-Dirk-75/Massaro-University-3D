@@ -1,4 +1,4 @@
-import { getItemById, getTierById } from '../content/catalog.js';
+import { findCatalogItemById, findTierById } from '../platform/index.js';
 
 const TIER_RANK = { guest: 0, member: 1, patron: 2 };
 
@@ -16,7 +16,7 @@ export function hasAccess(item, state) {
   }
 
   const activeTierId = commerce.activeTierId ?? 'guest';
-  const tier = getTierById(activeTierId);
+  const tier = findTierById(activeTierId);
   if (!tier) return false;
 
   if (tier.unlockItemIds?.includes(item.id)) {
@@ -58,7 +58,7 @@ export function hasAreaAccess(area, state) {
   }
 
   if (area.access.requiresItem) {
-    const item = getItemById(area.access.requiresItem);
+    const item = findCatalogItemById(area.access.requiresItem);
     return hasAccess(item, state);
   }
 
@@ -69,12 +69,12 @@ export function getAreaLockedMessage(area) {
   if (area.lockedMessage) return area.lockedMessage;
 
   if (area.access?.requiresTier) {
-    const tier = getTierById(area.access.requiresTier);
+    const tier = findTierById(area.access.requiresTier);
     return `${area.name} opens to ${tier?.name ?? area.access.requiresTier} members.`;
   }
 
-  if (area.access?.requiresItem) {
-    const item = getItemById(area.access.requiresItem);
+  if (area.access.requiresItem) {
+    const item = findCatalogItemById(area.access.requiresItem);
     return `${area.name} opens to those who hold ${item?.title ?? 'the required offering'}.`;
   }
 

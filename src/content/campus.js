@@ -1,5 +1,7 @@
 /**
- * ── CAMPUS DEFINITION — single source of truth for areas & gates ──
+ * ── CAMPUS DEFINITION (local mode seed data) ──
+ * Consumed only by src/platform/adapters/local.js — the rest of the app
+ * reads campus data via src/platform/.
  * Add a new building by appending one entry to CAMPUS_AREAS below.
  *
  * access: 'open' | { requiresTier: 'member' | 'patron' } | { requiresItem: '<catalogItemId>' }
