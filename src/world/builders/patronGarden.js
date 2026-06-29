@@ -36,7 +36,8 @@ function createGardenTree(x, z, scale, seed, areaPos) {
     const geo = new THREE.IcosahedronGeometry(r, 1);
     applyVertexColor(geo, foliageColor(rand, 0.06));
     const matrix = new THREE.Matrix4();
-    matrix.setPosition((rand() - 0.5) * 0.2, trunkH + i * 0.28, (rand() - 0.5) * 0.2);
+    const layerY = i === 0 ? trunkH + r : trunkH + i * scale * 0.28 + r;
+    matrix.setPosition((rand() - 0.5) * 0.2, layerY, (rand() - 0.5) * 0.2);
     geo.applyMatrix4(matrix);
     pieces.push(geo);
   }

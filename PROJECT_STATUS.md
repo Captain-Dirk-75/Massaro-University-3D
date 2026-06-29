@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-29 — Fixed floating tree canopies (trunk base on ground, canopy meets trunk top)
 - 2026-06-29 — Procedural campus visuals: instanced trees, extruded architecture, noise ground, rocks, tuned lighting/fog/bloom
 - 2026-06-29 — Sanctuary memberships moved to top; tiers side-by-side with included items listed
 - 2026-06-29 — Fixed C key opening customize while typing in Sage Grove chat

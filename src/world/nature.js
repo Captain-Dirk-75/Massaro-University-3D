@@ -42,10 +42,11 @@ function buildCanopyGeometry(scale, seed) {
     const color = foliageColor(rand, 0.1);
     applyVertexColor(geo, color);
 
+    const layerY = i === 0 ? radius : i * scale * 0.36 + radius;
     const matrix = new THREE.Matrix4();
     matrix.makeTranslation(
       (rand() - 0.5) * scale * 0.35,
-      i * scale * 0.42 + radius * 0.55,
+      layerY,
       (rand() - 0.5) * scale * 0.35,
     );
     geo.applyMatrix4(matrix);
@@ -59,6 +60,7 @@ function createTreeInstances(treeDefs) {
   const nature = new THREE.Group();
   const swayTargets = [];
   const trunkGeo = new THREE.CylinderGeometry(0.09, 0.2, 1, 7, 1);
+  trunkGeo.translate(0, 0.5, 0);
   const trunkMesh = new THREE.InstancedMesh(
     trunkGeo,
     TRUNK_MATERIAL,
@@ -83,7 +85,8 @@ function createTreeInstances(treeDefs) {
 
     const foliageGeo = buildCanopyGeometry(scale, seed + 17);
     const foliage = new THREE.Mesh(foliageGeo, FOLIAGE_MATERIAL);
-    foliage.position.set(x, y + trunkH * 0.82, z);
+    const canopySink = scale * 0.12;
+    foliage.position.set(x, y + trunkH - canopySink, z);
     foliage.rotation.copy(dummy.rotation);
     foliage.castShadow = true;
     foliage.receiveShadow = true;
