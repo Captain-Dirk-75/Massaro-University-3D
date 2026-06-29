@@ -65,6 +65,16 @@ export const LIBRARY_GATED_SECTION = {
   ejectSide: 1,
 };
 
+// ── Interior placement (tunable) ──
+export const LIBRARY_RECEPTION = { x: -5.5, z: 3.2, floor: 0 };
+export const LIBRARY_STAIRS = {
+  minX: 5,
+  maxX: 8.5,
+  minZ: -2.5,
+  maxZ: 2,
+  topFloor: 1,
+};
+
 // ── Room layout (local coords, building centre = 0,0) ──
 const ATRIUM_Z = 4;
 const READING_SPLIT_X = 0;
@@ -113,6 +123,7 @@ export function createLibraryOpts(area) {
         spanMin: -16,
         spanMax: 16,
         floors: [0],
+        colliderLevel: 'all',
         openings: [{ at: 0, width: 3.4, height: 3.0, bottom: 0 }],
       },
       {
@@ -121,6 +132,7 @@ export function createLibraryOpts(area) {
         spanMin: -7,
         spanMax: ATRIUM_DIVIDER_Z,
         floors: [0],
+        colliderLevel: 'all',
         openings: [{ at: -3, width: 2.6, height: 2.8, bottom: 0 }],
       },
       {
@@ -129,17 +141,12 @@ export function createLibraryOpts(area) {
         spanMin: -7,
         spanMax: 7,
         floors: [1],
+        colliderLevel: 'all',
         openings: [{ at: 0, width: 2.4, height: 2.6, bottom: 0 }],
       },
     ],
 
-    stairs: {
-      minX: 10,
-      maxX: 14,
-      minZ: -1,
-      maxZ: 5.5,
-      topFloor: 1,
-    },
+    stairs: LIBRARY_STAIRS,
 
     floorHoles: [],
 
@@ -154,7 +161,7 @@ export function createLibraryOpts(area) {
     ],
 
     furniture: [
-      { type: 'reception', x: 0, z: 5.2, floor: 0 },
+      { type: 'reception', x: LIBRARY_RECEPTION.x, z: LIBRARY_RECEPTION.z, floor: LIBRARY_RECEPTION.floor },
       { type: 'table', x: -8, z: -2, floor: 0 },
       { type: 'chair', x: -9, z: -1.2, floor: 0 },
       { type: 'bookshelf', x: -14, z: -4, floor: 0 },

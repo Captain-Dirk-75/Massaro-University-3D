@@ -27,10 +27,10 @@ function buildPartition(
   const { axis, at, spanMin, spanMax, floors, openings = [] } = partition;
   const spanHalf = (spanMax - spanMin) / 2;
   const spanCenter = (spanMin + spanMax) / 2;
+  const colliderLevel = partition.colliderLevel ?? 'all';
 
   for (const floorIndex of floors) {
     const yBase = floorIndex * storyHeight;
-    const level = floorLevelForIndex(floorIndex);
     const doorOpenings = openings.map((o) => ({
       ...o,
       offset: o.at - spanCenter,
@@ -41,12 +41,12 @@ function buildPartition(
     if (axis === 'z') {
       buildWallSegmentsAlongX(
         at, spanHalf, yBase, storyHeight, wallThickness, doorOpenings,
-        shellGroup, linerGroup, glassGroup, colliderBoxes, 1, palette, level, yBase,
+        shellGroup, linerGroup, glassGroup, colliderBoxes, 1, palette, colliderLevel, yBase,
       );
     } else {
       buildWallSegmentsAlongZ(
         at, spanHalf, yBase, storyHeight, wallThickness, doorOpenings,
-        shellGroup, linerGroup, glassGroup, colliderBoxes, 1, palette, level, yBase,
+        shellGroup, linerGroup, glassGroup, colliderBoxes, 1, palette, colliderLevel, yBase,
       );
     }
   }
