@@ -2,9 +2,13 @@ import * as THREE from 'three';
 import {
   addShadowed,
   buildCeilingLights,
+  buildChandelier,
   buildFloorDeck,
+  buildGalleryRailing,
   buildInteriorCeiling,
+  buildSplitStairMesh,
   buildStairMesh,
+  buildWallSconces,
   buildWallSegmentsAlongX,
   buildWallSegmentsAlongZ,
   createPalette,
@@ -18,6 +22,15 @@ export const DEFAULT_FLOOR_HEIGHT = 0.14;
 
 function floorLevelForIndex(index) {
   return index === 0 ? 'ground' : 'upper';
+}
+
+function pointInRect(lx, lz, rect) {
+  return (
+    lx >= rect.minX &&
+    lx <= rect.maxX &&
+    lz >= rect.minZ &&
+    lz <= rect.maxZ
+  );
 }
 
 function buildPartition(
@@ -89,6 +102,74 @@ function defaultLightCountForRoom(width, depth) {
   return 4;
 }
 
+function holesForFloor(index, ceilingHoles, floorHoles) {
+  const fromCeiling = (ceilingHoles ?? []).filter((h) => h.floor === index);
+  const fromFloor = (floorHoles ?? []).filter((h) => h.floor === index);
+  return [...fromCeiling, ...fromFloor].map(({ minX, maxX, minZ, maxZ }) => ({
+    minX, maxX, minZ, maxZ,
+  }));
+}
+
+function buildRoomLighting(room, floorIndex, storyHeight, floorHeight, totalHeight, ceiling, lightsGroup, palette) {
+  const floorY = floorIndex * storyHeight + floorHeight;
+  const halfW = (room.width ?? 12) / 2 - 0.5;
+  const halfD = (room.depth ?? 10) / 2 - 0.5;
+  const style = room.lightStyle ?? 'hanging';
+
+  if (style === 'chandelier') {
+    const c = room.chandelier ?? { x: room.x ?? 0, z: room.z ?? 0 };
+    const hangY = c.fromY === 'total' ? totalHeight - 0.2 : ceiling.bottomY;
+    buildChandelier(c.x, c.z, hangY, palette, lightsGroup, {
+      cordLength: c.cordLength ?? 3.0,
+    });
+    return;
+  }
+
+  if (style === 'sconce') {
+    buildWallSconces(
+      room.x ?? 0,
+      room.z ?? 0,
+      halfW,
+      halfD,
+      floorY,
+      room.sconceHeight ?? 2.6,
+      palette,
+      lightsGroup,
+      room.sconceCount ?? 2,
+    );
+    return;
+  }
+
+  const count = room.lightCount ?? defaultLightCountForRoom(room.width ?? 12, room.depth ?? 10);
+  buildCeilingLights(room.x ?? 0, room.z ?? 0, halfW, halfD, ceiling.bottomY, count, lightsGroup);
+}
+
+function collectStairRects(stairs, splitStairs) {
+  if (splitStairs) {
+    return [splitStairs.main, splitStairs.left, splitStairs.right];
+  }
+  if (stairs) return [stairs];
+  return [];
+}
+
+function splitStairFloorY(lx, lz, split, storyHeight, floorHeight) {
+  const { main, left, right, landingY } = split;
+
+  if (pointInRect(lx, lz, main)) {
+    const t = THREE.MathUtils.clamp((main.maxZ - lz) / (main.maxZ - main.minZ), 0, 1);
+    return t * landingY + floorHeight;
+  }
+  if (pointInRect(lx, lz, left)) {
+    const t = THREE.MathUtils.clamp((left.maxZ - lz) / (left.maxZ - left.minZ), 0, 1);
+    return landingY + t * (storyHeight - landingY) + floorHeight;
+  }
+  if (pointInRect(lx, lz, right)) {
+    const t = THREE.MathUtils.clamp((right.maxZ - lz) / (right.maxZ - right.minZ), 0, 1);
+    return landingY + t * (storyHeight - landingY) + floorHeight;
+  }
+  return null;
+}
+
 /**
  * Multi-room, multi-floor unified-world building.
  * @param {object} opts
@@ -108,7 +189,10 @@ export function createCompoundBuilding(opts) {
     exteriorWindows = [],
     partitions = [],
     stairs = null,
+    splitStairs = null,
     floorHoles = [],
+    ceilingHoles = [],
+    galleryRailings = [],
     gates = [],
     rooms = [],
     furniture = [],
@@ -157,33 +241,46 @@ export function createCompoundBuilding(opts) {
     list.push(hole);
     holesByFloor.set(hole.floor, list);
   }
-  if (stairs) {
-    const list = holesByFloor.get(stairs.topFloor) ?? [];
-    list.push({ minX: stairs.minX, maxX: stairs.maxX, minZ: stairs.minZ, maxZ: stairs.maxZ });
-    holesByFloor.set(stairs.topFloor, list);
+
+  const stairTopFloor = splitStairs?.topFloor ?? stairs?.topFloor;
+  for (const rect of collectStairRects(stairs, splitStairs)) {
+    if (stairTopFloor == null) continue;
+    const list = holesByFloor.get(stairTopFloor) ?? [];
+    list.push({ minX: rect.minX, maxX: rect.maxX, minZ: rect.minZ, maxZ: rect.maxZ });
+    holesByFloor.set(stairTopFloor, list);
   }
 
   for (let floorIndex = 0; floorIndex < floorCount; floorIndex++) {
     const floorY = floorIndex * storyHeight + floorHeight;
-    const holes = holesByFloor.get(floorIndex) ?? [];
-    buildFloorDeck(insetW, insetD, floorY - floorHeight, floorHeight, holes, palette, linerGroup);
+    const deckHoles = holesByFloor.get(floorIndex) ?? [];
+    buildFloorDeck(insetW, insetD, floorY - floorHeight, floorHeight, deckHoles, palette, linerGroup);
 
     const ceilingY = (floorIndex + 1) * storyHeight - 0.06 - 0.07;
     const beams = floorIndex === floorCount - 1 ? ceilingBeams : Math.min(ceilingBeams, 3);
-    const ceiling = buildInteriorCeiling(insetW, insetD, ceilingY, palette, linerGroup, beams);
+    const ceiling = buildInteriorCeiling(
+      insetW, insetD, ceilingY, palette, linerGroup, beams,
+      holesForFloor(floorIndex, ceilingHoles, null),
+    );
 
-    for (const room of rooms.filter((r) => r.floor === floorIndex)) {
-      const count = room.lightCount ?? defaultLightCountForRoom(room.width ?? insetW, room.depth ?? insetD);
-      buildCeilingLights(room.x ?? 0, room.z ?? 0, (room.width ?? insetW) / 2 - 0.5, (room.depth ?? insetD) / 2 - 0.5, ceiling.bottomY, count, lightsGroup);
+    const floorRooms = rooms.filter((r) => r.floor === floorIndex);
+    for (const room of floorRooms) {
+      buildRoomLighting(room, floorIndex, storyHeight, floorHeight, totalHeight, ceiling, lightsGroup, palette);
     }
 
-    if (rooms.filter((r) => r.floor === floorIndex).length === 0) {
+    if (floorRooms.length === 0) {
       buildCeilingLights(0, 0, halfW - 1, halfD - 1, ceiling.bottomY, defaultLightCountForRoom(insetW, insetD), lightsGroup);
     }
   }
 
-  if (stairs) {
+  if (splitStairs) {
+    buildSplitStairMesh(splitStairs, storyHeight, palette, linerGroup);
+  } else if (stairs) {
     buildStairMesh(stairs, storyHeight, palette, linerGroup);
+  }
+
+  if (galleryRailings.length > 0) {
+    const galleryY = storyHeight + floorHeight;
+    buildGalleryRailing(galleryRailings, galleryY, palette, linerGroup, localColliders);
   }
 
   const roof = addShadowed(
@@ -246,25 +343,25 @@ export function createCompoundBuilding(opts) {
   }));
 
   function onStaircase(lx, lz) {
+    if (splitStairs) {
+      return collectStairRects(null, splitStairs).some((rect) => pointInRect(lx, lz, rect));
+    }
     if (!stairs) return false;
-    return (
-      lx >= stairs.minX &&
-      lx <= stairs.maxX &&
-      lz >= stairs.minZ &&
-      lz <= stairs.maxZ
-    );
+    return pointInRect(lx, lz, stairs);
   }
 
-  function stairFloorY(lz) {
+  function stairFloorY(lx, lz) {
+    if (splitStairs) {
+      return splitStairFloorY(lx, lz, splitStairs, storyHeight, floorHeight);
+    }
+    if (!stairs) return floorHeight;
     const progress = THREE.MathUtils.clamp((stairs.maxZ - lz) / (stairs.maxZ - stairs.minZ), 0, 1);
     return progress * storyHeight + floorHeight;
   }
 
   function isInFloorHole(lx, lz, floorIndex) {
     const holes = holesByFloor.get(floorIndex) ?? [];
-    return holes.some(
-      (h) => lx >= h.minX && lx <= h.maxX && lz >= h.minZ && lz <= h.maxZ,
-    );
+    return holes.some((h) => pointInRect(lx, lz, h));
   }
 
   function isInsideFootprint(lx, lz) {
@@ -277,7 +374,7 @@ export function createCompoundBuilding(opts) {
     if (!isInsideFootprint(lx, lz)) return null;
 
     if (onStaircase(lx, lz)) {
-      return stairFloorY(lz);
+      return stairFloorY(lx, lz);
     }
 
     const preferUpper = currentY >= storyHeight + 0.8;

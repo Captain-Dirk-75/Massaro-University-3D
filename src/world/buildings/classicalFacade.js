@@ -220,13 +220,14 @@ export function buildClassicalFacade({
   buildDoorTrim(facadeGroup, cfg, faceZ, outward, storyHeight, palette);
   buildSteps(facadeGroup, cfg, halfD, palette);
 
+  const deckDepth = cfg.bayProjection + cfg.stepCount * cfg.stepDepth + 0.6;
   const deck = addShadowed(
     new THREE.Mesh(
-      new THREE.BoxGeometry(cfg.bayWidth + 1.2, 0.12, cfg.bayProjection + cfg.stepCount * cfg.stepDepth + 0.6),
+      new THREE.BoxGeometry(cfg.bayWidth + 1.2, 0.12, deckDepth),
       decorMat(palette, true),
     ),
   );
-  deck.position.set(0, 0.06, faceZ + outward * (cfg.bayProjection + cfg.stepCount * cfg.stepDepth * 0.35));
+  deck.position.set(0, 0.06, faceZ + outward * (deckDepth / 2 + 0.08));
   facadeGroup.add(deck);
 
   const roofCap = addShadowed(

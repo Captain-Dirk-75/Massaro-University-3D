@@ -256,10 +256,7 @@ export function buildWallSegmentsAlongZ(
   if (cursor < halfD) addSegment(cursor, halfD, yBase, yBase + wallH);
 }
 
-export function buildFloorDeck(insetW, insetD, floorY, thickness, holes, palette, group) {
-  const mat = floorMat(palette);
-  const pieces = [{ minX: -insetW / 2, maxX: insetW / 2, minZ: -insetD / 2, maxZ: insetD / 2 }];
-
+export function cutRectangles(pieces, holes) {
   for (const hole of holes) {
     const next = [];
     for (const piece of pieces) {
@@ -288,6 +285,15 @@ export function buildFloorDeck(insetW, insetD, floorY, thickness, holes, palette
     pieces.length = 0;
     pieces.push(...next);
   }
+  return pieces;
+}
+
+export function buildFloorDeck(insetW, insetD, floorY, thickness, holes, palette, group) {
+  const mat = floorMat(palette);
+  const pieces = cutRectangles(
+    [{ minX: -insetW / 2, maxX: insetW / 2, minZ: -insetD / 2, maxZ: insetD / 2 }],
+    holes,
+  );
 
   for (const piece of pieces) {
     const w = piece.maxX - piece.minX;
@@ -299,12 +305,22 @@ export function buildFloorDeck(insetW, insetD, floorY, thickness, holes, palette
   }
 }
 
-export function buildInteriorCeiling(insetW, insetD, ceilingY, palette, group, beamCount = 0) {
-  const ceiling = addShadowed(
-    new THREE.Mesh(new THREE.BoxGeometry(insetW, 0.14, insetD), ceilingMat(palette)),
+export function buildInteriorCeiling(insetW, insetD, ceilingY, palette, group, beamCount = 0, holes = []) {
+  const mat = ceilingMat(palette);
+  const thickness = 0.14;
+  const pieces = cutRectangles(
+    [{ minX: -insetW / 2, maxX: insetW / 2, minZ: -insetD / 2, maxZ: insetD / 2 }],
+    holes,
   );
-  ceiling.position.set(0, ceilingY, 0);
-  group.add(ceiling);
+
+  for (const piece of pieces) {
+    const w = piece.maxX - piece.minX;
+    const d = piece.maxZ - piece.minZ;
+    if (w < 0.2 || d < 0.2) continue;
+    const slab = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(w, thickness, d), mat));
+    slab.position.set((piece.minX + piece.maxX) / 2, ceilingY, (piece.minZ + piece.maxZ) / 2);
+    group.add(slab);
+  }
 
   if (beamCount > 0) {
     const beamMat = woodMat(palette);
@@ -375,13 +391,14 @@ export function buildCeilingLights(cx, cz, halfW, halfD, ceilingBottomY, count, 
   lightsGroup.add(fill);
 }
 
-export function buildStairMesh(stair, storyHeight, palette, group) {
-  const { minX, maxX, minZ, maxZ } = stair;
+function buildStairFlight(minX, maxX, minZ, maxZ, riseMin, riseMax, palette, group) {
   const w = maxX - minX;
   const d = maxZ - minZ;
-  const steps = 14;
-  const stepH = storyHeight / steps;
+  const steps = 12;
+  const totalRise = riseMax - riseMin;
+  const stepH = totalRise / steps;
   const stepD = d / steps;
+  const cx = (minX + maxX) / 2;
 
   for (let i = 0; i < steps; i++) {
     const step = addShadowed(
@@ -391,8 +408,8 @@ export function buildStairMesh(stair, storyHeight, palette, group) {
       ),
     );
     step.position.set(
-      (minX + maxX) / 2,
-      stepH * i + stepH / 2,
+      cx,
+      riseMin + stepH * i + stepH / 2,
       maxZ - stepD * i - stepD / 2,
     );
     group.add(step);
@@ -400,8 +417,127 @@ export function buildStairMesh(stair, storyHeight, palette, group) {
 
   const railMat = woodMat(palette);
   for (const side of [minX + 0.08, maxX - 0.08]) {
-    const rail = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.08, storyHeight + 0.6, d), railMat));
-    rail.position.set(side, storyHeight / 2, (minZ + maxZ) / 2);
+    const rail = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.08, totalRise + 0.5, d), railMat));
+    rail.position.set(side, riseMin + totalRise / 2, (minZ + maxZ) / 2);
     group.add(rail);
+  }
+}
+
+export function buildStairMesh(stair, storyHeight, palette, group) {
+  buildStairFlight(stair.minX, stair.maxX, stair.minZ, stair.maxZ, 0, storyHeight, palette, group);
+}
+
+export function buildSplitStairMesh(split, storyHeight, palette, group) {
+  const { main, left, right, landingY } = split;
+  buildStairFlight(main.minX, main.maxX, main.minZ, main.maxZ, 0, landingY, palette, group);
+  buildStairFlight(left.minX, left.maxX, left.minZ, left.maxZ, landingY, storyHeight, palette, group);
+  buildStairFlight(right.minX, right.maxX, right.minZ, right.maxZ, landingY, storyHeight, palette, group);
+
+  const landingW = right.maxX - left.minX;
+  const landingD = 0.9;
+  const landing = addShadowed(
+    new THREE.Mesh(new THREE.BoxGeometry(landingW * 0.95, 0.12, landingD), woodMat(palette)),
+  );
+  landing.position.set(
+    (left.minX + right.maxX) / 2,
+    landingY + 0.06,
+    main.minZ - landingD / 2,
+  );
+  group.add(landing);
+}
+
+export function buildGalleryRailing(segments, floorY, palette, group, colliderBoxes) {
+  const railMat = woodMat(palette);
+  for (const seg of segments) {
+    const { minX, maxX, minZ, maxZ, height = 0.95 } = seg;
+    const alongX = maxX - minX >= maxZ - minZ;
+    if (alongX) {
+      const w = maxX - minX;
+      const rail = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(w, height, 0.1), railMat));
+      rail.position.set((minX + maxX) / 2, floorY + height / 2, (minZ + maxZ) / 2);
+      group.add(rail);
+      colliderBoxes.push({
+        minX: minX - 0.05,
+        maxX: maxX + 0.05,
+        minZ: (minZ + maxZ) / 2 - 0.12,
+        maxZ: (minZ + maxZ) / 2 + 0.12,
+        level: 'upper',
+      });
+    } else {
+      const d = maxZ - minZ;
+      const rail = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.1, height, d), railMat));
+      rail.position.set((minX + maxX) / 2, floorY + height / 2, (minZ + maxZ) / 2);
+      group.add(rail);
+      colliderBoxes.push({
+        minX: (minX + maxX) / 2 - 0.12,
+        maxX: (minX + maxX) / 2 + 0.12,
+        minZ: minZ - 0.05,
+        maxZ: maxZ + 0.05,
+        level: 'upper',
+      });
+    }
+  }
+}
+
+export function buildChandelier(x, z, hangY, palette, lightsGroup, opts = {}) {
+  const cordLength = opts.cordLength ?? 2.8;
+  const shadeHeight = opts.shadeHeight ?? 0.55;
+  const shadeTop = opts.shadeTopRadius ?? 0.28;
+  const shadeBottom = opts.shadeBottomRadius ?? 0.62;
+
+  const cord = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.018, cordLength, 6),
+    new THREE.MeshStandardMaterial({ color: 0x3a3835, roughness: 0.9 }),
+  );
+  cord.position.set(x, hangY - cordLength / 2, z);
+  lightsGroup.add(cord);
+
+  const shade = addShadowed(
+    new THREE.Mesh(
+      new THREE.CylinderGeometry(shadeTop, shadeBottom, shadeHeight, 14, 1, true),
+      new THREE.MeshStandardMaterial({
+        color: CEILING_LIGHT_SHADE_COLOR,
+        emissive: CEILING_LIGHT_WARMTH,
+        emissiveIntensity: CEILING_LIGHT_EMISSIVE_INTENSITY * 1.2,
+        roughness: 0.75,
+        side: THREE.DoubleSide,
+      }),
+    ),
+  );
+  shade.position.set(x, hangY - cordLength - shadeHeight / 2, z);
+  lightsGroup.add(shade);
+
+  const fill = new THREE.PointLight(
+    CEILING_LIGHT_WARMTH,
+    INTERIOR_FILL_LIGHT_INTENSITY * 1.4,
+    INTERIOR_FILL_LIGHT_DISTANCE * 1.5,
+  );
+  fill.position.set(x, hangY - cordLength - shadeHeight * 0.5, z);
+  lightsGroup.add(fill);
+}
+
+export function buildWallSconces(cx, cz, halfW, halfD, floorY, height, palette, lightsGroup, count = 2) {
+  const mat = new THREE.MeshStandardMaterial({
+    color: palette.timber,
+    emissive: CEILING_LIGHT_WARMTH,
+    emissiveIntensity: 0.18,
+    roughness: 0.82,
+  });
+  const positions = [
+    [cx - halfW * 0.85, cz, Math.PI / 2],
+    [cx + halfW * 0.85, cz, -Math.PI / 2],
+    [cx, cz - halfD * 0.85, 0],
+    [cx, cz + halfD * 0.85, Math.PI],
+  ].slice(0, count);
+
+  for (const [x, z, rotY] of positions) {
+    const sconce = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.22, 0.18), mat));
+    sconce.position.set(x, floorY + height, z);
+    sconce.rotation.y = rotY;
+    lightsGroup.add(sconce);
+
+    const bulb = new THREE.PointLight(CEILING_LIGHT_WARMTH, 0.35, 8);
+    bulb.position.set(x, floorY + height + 0.05, z);
+    lightsGroup.add(bulb);
   }
 }

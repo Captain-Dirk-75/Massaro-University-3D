@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { seededRandom } from './procedural/random.js';
+import { isInsideBuildingFootprint } from './buildingFootprints.js';
 
 const GROUND_SIZE = 120;
 const SEGMENTS = 96;
@@ -91,7 +92,7 @@ function vertexColorAt(wx, wz) {
   return color;
 }
 
-export function createGround() {
+export function createGround({ interiorZones = [] } = {}) {
   const geometry = new THREE.PlaneGeometry(
     GROUND_SIZE,
     GROUND_SIZE,
@@ -103,12 +104,22 @@ export function createGround() {
   const positions = geometry.attributes.position;
   const colors = new Float32Array(positions.count * 3);
   const half = GROUND_SIZE / 2;
+  const interiorStone = STONE_DARK.clone().lerp(STONE_LIGHT, 0.42);
 
   for (let i = 0; i < positions.count; i++) {
     const wx = positions.getX(i);
     const wz = positions.getZ(i);
-    const height = sampleGroundHeight(wx, wz);
+    const insideBuilding = isInsideBuildingFootprint(wx, wz, interiorZones);
 
+    if (insideBuilding) {
+      positions.setY(i, 0.02);
+      colors[i * 3] = interiorStone.r;
+      colors[i * 3 + 1] = interiorStone.g;
+      colors[i * 3 + 2] = interiorStone.b;
+      continue;
+    }
+
+    const height = sampleGroundHeight(wx, wz);
     positions.setY(i, height);
 
     const color = vertexColorAt(wx, wz);

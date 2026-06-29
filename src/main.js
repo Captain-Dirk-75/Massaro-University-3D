@@ -66,15 +66,16 @@ async function bootstrap() {
   const camera = createCamera();
 
   outdoorRoot.add(createLighting());
-  outdoorRoot.add(createGround());
 
   const campus = createCampus();
-  outdoorRoot.add(campus.root);
 
   const buildingZones = getBuildingExclusionZones({
     areas: campus.areas,
     unifiedBuildings: campus.unifiedBuildings,
   });
+
+  outdoorRoot.add(createGround({ interiorZones: buildingZones }));
+  outdoorRoot.add(campus.root);
 
   const { group: nature, swayTargets, perches: treePerches, treeColliders } =
     createNature({ buildingZones });

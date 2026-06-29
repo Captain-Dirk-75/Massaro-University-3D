@@ -1,5 +1,5 @@
 /**
- * Collegiate Gothic library — Stage 2a structure config.
+ * Collegiate Gothic library — interior layout config.
  * Tunable layout, aesthetic, gated-section rules, and classical facade.
  *
  * Campus position lives in src/content/campus.js (library entry) — keep in sync:
@@ -9,13 +9,37 @@
 // ── Campus placement (mirror of campus.js — update both together) ──
 export const LIBRARY_CAMPUS_POSITION = { x: 0, y: 0, z: -48 };
 
-// ── Building shell ──
+// ── Building shell (exterior facade/windows use these) ──
 export const LIBRARY_WIDTH = 32;
 export const LIBRARY_DEPTH = 14;
 export const LIBRARY_STORY_HEIGHT = 4.0;
 export const LIBRARY_FLOOR_COUNT = 2;
 export const LIBRARY_WALL_THICKNESS = 0.35;
 export const LIBRARY_FLOOR_HEIGHT = 0.14;
+
+// ── Interior layout (tunable) ──
+export const LIBRARY_HALL_VOID = { minX: -9.5, maxX: 9.5, minZ: -0.5, maxZ: 7 };
+export const LIBRARY_READING_DIVIDER_X = 6.5;
+export const LIBRARY_HALL_NORTH_Z = -0.5;
+
+export const LIBRARY_RECEPTION = { x: -9, z: 5.5, floor: 0 };
+
+export const LIBRARY_SPLIT_STAIRS = {
+  landingY: 2.0,
+  topFloor: 1,
+  main: { minX: -1.8, maxX: 1.8, minZ: -0.5, maxZ: 4.8 },
+  left: { minX: -5.5, maxX: -1.8, minZ: -4.2, maxZ: -0.5 },
+  right: { minX: 1.8, maxX: 5.5, minZ: -4.2, maxZ: -0.5 },
+};
+
+export const LIBRARY_CHANDELIER = {
+  x: 0,
+  z: 2.5,
+  cordLength: 3.2,
+  fromY: 'total',
+};
+
+export const LIBRARY_SIDE_LAMP_HEIGHT = 2.6;
 
 // ── Collegiate Gothic palette (dark timber, stone, warm glow) ──
 export const LIBRARY_PALETTE = {
@@ -56,31 +80,18 @@ export const LIBRARY_CEILING_BEAMS = 4;
 // ── Membership-gated section (data-driven — change access here) ──
 export const LIBRARY_GATED_SECTION = {
   id: 'library-upper-archive',
-  bounds: { minX: -16, maxX: 0, minZ: -7, maxZ: 7 },
+  bounds: { minX: -16, maxX: -6.5, minZ: -6.5, maxZ: 2 },
   floorMin: 1,
   access: { requiresTier: 'member' },
   lockedMessage: 'The Upper Archive opens to Members and Patrons.',
   barrierAxis: 'x',
-  barrierAt: 0,
+  barrierAt: -6.5,
   ejectSide: 1,
 };
 
-// ── Interior placement (tunable) ──
-export const LIBRARY_RECEPTION = { x: -5.5, z: 3.2, floor: 0 };
-export const LIBRARY_STAIRS = {
-  minX: 5,
-  maxX: 8.5,
-  minZ: -2.5,
-  maxZ: 2,
-  topFloor: 1,
-};
-
-// ── Room layout (local coords, building centre = 0,0) ──
-const ATRIUM_Z = 4;
-const READING_SPLIT_X = 0;
-const ATRIUM_DIVIDER_Z = 1;
-
 export function createLibraryOpts(area) {
+  const divX = LIBRARY_READING_DIVIDER_X;
+
   return {
     id: area.id,
     position: area.position,
@@ -118,57 +129,140 @@ export function createLibraryOpts(area) {
 
     partitions: [
       {
-        axis: 'z',
-        at: ATRIUM_DIVIDER_Z,
-        spanMin: -16,
-        spanMax: 16,
+        axis: 'x',
+        at: -divX,
+        spanMin: -6.5,
+        spanMax: 0.5,
         floors: [0],
         colliderLevel: 'all',
-        openings: [{ at: 0, width: 3.4, height: 3.0, bottom: 0 }],
+        openings: [{ at: -2.5, width: 2.6, height: 2.8, bottom: 0 }],
       },
       {
         axis: 'x',
-        at: READING_SPLIT_X,
-        spanMin: -7,
-        spanMax: ATRIUM_DIVIDER_Z,
+        at: divX,
+        spanMin: -6.5,
+        spanMax: 0.5,
         floors: [0],
         colliderLevel: 'all',
-        openings: [{ at: -3, width: 2.6, height: 2.8, bottom: 0 }],
+        openings: [{ at: -2.5, width: 2.6, height: 2.8, bottom: 0 }],
       },
       {
         axis: 'x',
-        at: READING_SPLIT_X,
-        spanMin: -7,
-        spanMax: 7,
+        at: -divX,
+        spanMin: -6.5,
+        spanMax: 2,
+        floors: [1],
+        colliderLevel: 'all',
+        openings: [{ at: 0, width: 2.4, height: 2.6, bottom: 0 }],
+      },
+      {
+        axis: 'x',
+        at: divX,
+        spanMin: -6.5,
+        spanMax: 2,
         floors: [1],
         colliderLevel: 'all',
         openings: [{ at: 0, width: 2.4, height: 2.6, bottom: 0 }],
       },
     ],
 
-    stairs: LIBRARY_STAIRS,
+    splitStairs: LIBRARY_SPLIT_STAIRS,
 
-    floorHoles: [],
+    floorHoles: [
+      { floor: 1, ...LIBRARY_HALL_VOID },
+    ],
+
+    ceilingHoles: [
+      { floor: 0, ...LIBRARY_HALL_VOID },
+    ],
+
+    galleryRailings: [
+      { minX: -9.5, maxX: 9.5, minZ: -0.5, maxZ: -0.35 },
+      { minX: -9.35, maxX: -9.15, minZ: -0.5, maxZ: 5.5 },
+      { minX: 9.15, maxX: 9.35, minZ: -0.5, maxZ: 5.5 },
+    ],
 
     gates: [LIBRARY_GATED_SECTION],
 
     rooms: [
-      { id: 'atrium', floor: 0, x: 0, z: ATRIUM_Z, width: 30, depth: 6, lightCount: 2 },
-      { id: 'west-reading', floor: 0, x: -8, z: -3, width: 14, depth: 8, lightCount: 2 },
-      { id: 'east-reading', floor: 0, x: 8, z: -3, width: 14, depth: 8, lightCount: 2 },
-      { id: 'upper-gallery', floor: 1, x: 8, z: 0, width: 14, depth: 12, lightCount: 2 },
-      { id: 'upper-archive', floor: 1, x: -8, z: 0, width: 14, depth: 12, lightCount: 2 },
+      {
+        id: 'grand-hall',
+        floor: 0,
+        x: 0,
+        z: 3,
+        width: 20,
+        depth: 12,
+        lightStyle: 'chandelier',
+        chandelier: LIBRARY_CHANDELIER,
+      },
+      {
+        id: 'west-reading',
+        floor: 0,
+        x: -11,
+        z: -3.5,
+        width: 9,
+        depth: 6,
+        lightStyle: 'sconce',
+        sconceHeight: LIBRARY_SIDE_LAMP_HEIGHT,
+      },
+      {
+        id: 'east-reading',
+        floor: 0,
+        x: 11,
+        z: -3.5,
+        width: 9,
+        depth: 6,
+        lightStyle: 'sconce',
+        sconceHeight: LIBRARY_SIDE_LAMP_HEIGHT,
+      },
+      {
+        id: 'gallery-west',
+        floor: 1,
+        x: -11,
+        z: -2,
+        width: 9,
+        depth: 8,
+        lightStyle: 'sconce',
+        sconceHeight: LIBRARY_SIDE_LAMP_HEIGHT,
+      },
+      {
+        id: 'gallery-east',
+        floor: 1,
+        x: 11,
+        z: -2,
+        width: 9,
+        depth: 8,
+        lightStyle: 'sconce',
+        sconceHeight: LIBRARY_SIDE_LAMP_HEIGHT,
+      },
+      {
+        id: 'upper-archive',
+        floor: 1,
+        x: -11,
+        z: -2,
+        width: 9,
+        depth: 8,
+        lightStyle: 'sconce',
+        sconceHeight: LIBRARY_SIDE_LAMP_HEIGHT,
+      },
     ],
 
     furniture: [
       { type: 'reception', x: LIBRARY_RECEPTION.x, z: LIBRARY_RECEPTION.z, floor: LIBRARY_RECEPTION.floor },
-      { type: 'table', x: -8, z: -2, floor: 0 },
-      { type: 'chair', x: -9, z: -1.2, floor: 0 },
-      { type: 'bookshelf', x: -14, z: -4, floor: 0 },
-      { type: 'table', x: 8, z: -2, floor: 0 },
-      { type: 'bookshelf', x: 14, z: -4, floor: 0 },
-      { type: 'table', x: 8, z: 2, floor: 1 },
-      { type: 'bookshelf', x: -12, z: 3, floor: 1 },
+      { type: 'bookshelf', x: -12, z: 4.5, floor: 0 },
+      { type: 'bookshelf', x: 12, z: 4.5, floor: 0 },
+      { type: 'bookshelf', x: -12, z: 1.5, floor: 0 },
+      { type: 'bookshelf', x: 12, z: 1.5, floor: 0 },
+      { type: 'table', x: -11, z: -2, floor: 0 },
+      { type: 'chair', x: -12, z: -1.2, floor: 0 },
+      { type: 'table', x: 11, z: -2, floor: 0 },
+      { type: 'chair', x: 12, z: -1.2, floor: 0 },
+      { type: 'table', x: 3, z: 3.5, floor: 0 },
+      { type: 'chair', x: 4, z: 3.5, floor: 0 },
+      { type: 'bookshelf', x: -12, z: 1, floor: 1 },
+      { type: 'bookshelf', x: 12, z: 1, floor: 1 },
+      { type: 'table', x: 11, z: -1, floor: 1 },
+      { type: 'bookshelf', x: -14, z: -3, floor: 1 },
     ],
   };
 }

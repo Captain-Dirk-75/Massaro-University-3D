@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-29 (library interior walkability fix)
+**Last updated:** 2026-06-29 (library interior layout redesign)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-29 — Library interior redesign: double-height hall, grand split staircase, gallery railings, chandelier/sconce lighting, logical room layout; ground masked inside footprints; facade deck pulled clear of doorway
 - 2026-06-29 — Library interior walkability: reception desk moved off entry path; stairs repositioned clear of east wall; partition colliders use Pavilion-style `all` level
 - 2026-06-29 — Fix library structural regression: facade is decoration-only layer; walls/windows/door/colliders restored; 4 columns frame doorway
 - 2026-06-29 — Library moved north (z:-48) clear of pond; classical portico facade (columns, pediment, steps) via reusable classicalFacade.js
