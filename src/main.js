@@ -13,10 +13,12 @@ import { createWaterFeature } from './world/waterFeature.js';
 import { createMotes } from './world/motes.js';
 import { createWorldAnimations } from './world/animations.js';
 import { createKiosk } from './world/kiosk.js';
+import { createGuideFigure } from './world/guideFigure.js';
 import { createPostProcessing } from './post/postProcessing.js';
 import { createHud } from './ui/hud.js';
 import { createCustomizePanel } from './ui/customizePanel.js';
 import { createStorePanel } from './ui/storePanel.js';
+import { createGuidePanel } from './ui/guidePanel.js';
 import { createPlayerAvatar } from './avatar/playerAvatar.js';
 import { load } from './state/persistence.js';
 import {
@@ -28,7 +30,11 @@ import {
 import { appState } from './state/appState.js';
 
 function isUiBlocking() {
-  return appState.customizePanelOpen || appState.storePanelOpen;
+  return (
+    appState.customizePanelOpen ||
+    appState.storePanelOpen ||
+    appState.guidePanelOpen
+  );
 }
 
 async function bootstrap() {
@@ -61,6 +67,9 @@ async function bootstrap() {
   const kiosk = createKiosk();
   scene.add(kiosk.group);
 
+  const guide = createGuideFigure();
+  scene.add(guide.group);
+
   const playerAvatar = createPlayerAvatar(scene);
   playerAvatar.updateFromProfile(playerState.profile);
 
@@ -78,8 +87,10 @@ async function bootstrap() {
 
   let customizePanel;
   let storePanel;
+  let guidePanel;
 
   const hud = createHud({
+    onGuideClick: () => guidePanel.open(),
     onCustomizeClick: () => customizePanel.toggle(),
     onSanctuaryClick: () => storePanel.open(),
   });
@@ -107,12 +118,24 @@ async function bootstrap() {
     },
   });
 
+  guidePanel = createGuidePanel({
+    onOpenChange(open) {
+      appState.guidePanelOpen = open;
+    },
+  });
+
   applyProfileToUi(playerState.profile);
 
   const interaction = createInteractionSystem({
     camera,
-    getTargets: () => [kiosk],
-    onInteract: () => storePanel.open(),
+    getTargets: () => [kiosk, guide],
+    onInteract(target) {
+      if (target.id === 'sage-grove') {
+        guidePanel.open();
+      } else if (target.id === 'course-sanctuary') {
+        storePanel.open();
+      }
+    },
     isBlocked: isUiBlocking,
   });
 

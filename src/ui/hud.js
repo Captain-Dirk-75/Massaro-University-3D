@@ -1,6 +1,6 @@
 import { getColorById } from '../avatar/colors.js';
 
-export function createHud({ onCustomizeClick, onSanctuaryClick } = {}) {
+export function createHud({ onCustomizeClick, onSanctuaryClick, onGuideClick } = {}) {
   const overlay = document.createElement('div');
   overlay.id = 'hud';
   overlay.innerHTML = `
@@ -10,6 +10,9 @@ export function createHud({ onCustomizeClick, onSanctuaryClick } = {}) {
       <span class="hud-player__name" id="hud-player-name">Visitor</span>
     </div>
     <div class="hud-actions">
+      <button type="button" class="hud-action" id="hud-guide-btn" title="Talk with Sage Grove">
+        Sage Grove
+      </button>
       <button type="button" class="hud-action" id="hud-sanctuary-btn" title="Course Sanctuary catalog">
         Sanctuary
       </button>
@@ -126,7 +129,12 @@ export function createHud({ onCustomizeClick, onSanctuaryClick } = {}) {
   const swatchEl = overlay.querySelector('#hud-color-swatch');
   const customizeBtn = overlay.querySelector('#hud-customize-btn');
   const sanctuaryBtn = overlay.querySelector('#hud-sanctuary-btn');
+  const guideBtn = overlay.querySelector('#hud-guide-btn');
   const interactEl = overlay.querySelector('#hud-interact');
+
+  guideBtn.addEventListener('click', () => {
+    onGuideClick?.();
+  });
 
   customizeBtn.addEventListener('click', () => {
     onCustomizeClick?.();
