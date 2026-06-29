@@ -187,6 +187,8 @@ async function bootstrap() {
         controls.update(delta);
       }
 
+      animations.update(delta);
+
       playerAvatar.syncToCamera(camera);
       addCampusTime(delta);
 

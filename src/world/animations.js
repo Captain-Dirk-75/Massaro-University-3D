@@ -1,6 +1,6 @@
 import { FOLIAGE_SWAY_SPEED } from './nature.js';
 import { RIPPLE_SPEED } from './waterFeature.js';
-import { MOTE_DRIFT_SPEED } from './motes.js';
+import { MOTE_ORBIT_SPEED } from './motes.js';
 
 export function createWorldAnimations({ swayTargets, waterMaterial, motes }) {
   let elapsed = 0;
@@ -27,10 +27,14 @@ export function createWorldAnimations({ swayTargets, waterMaterial, motes }) {
       for (let i = 0; i < seeds.length; i++) {
         const s = seeds[i];
         const i3 = i * 3;
-        positions[i3] += Math.sin(elapsed * s.speed + s.phase) * delta * MOTE_DRIFT_SPEED;
-        positions[i3 + 1] +=
-          Math.sin(elapsed * s.speed * 0.7 + s.phase) * delta * MOTE_DRIFT_SPEED * 0.4;
-        positions[i3 + 2] += Math.cos(elapsed * s.speed * 0.5 + s.phase) * delta * MOTE_DRIFT_SPEED;
+        const t = elapsed * s.speed * MOTE_ORBIT_SPEED;
+
+        positions[i3] = s.ox + Math.sin(t + s.phase) * s.radius;
+        positions[i3 + 1] =
+          s.oy +
+          Math.sin(t * 0.65 + s.phase * 1.3) * s.radius * 0.45 +
+          Math.sin(elapsed * 0.2 + s.phase) * 0.25;
+        positions[i3 + 2] = s.oz + Math.cos(t * 0.8 + s.phase) * s.radius * 0.85;
       }
       points.geometry.attributes.position.needsUpdate = true;
     }
