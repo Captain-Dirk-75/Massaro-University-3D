@@ -1,15 +1,29 @@
 import * as THREE from 'three';
 
-const RT_HEIGHT = 480;
+const RT_HEIGHT = 512;
 const WINDOW_W = 3.0;
 const WINDOW_H = 2.2;
-const V_FOV = 42;
+const V_FOV = 44;
+
+function assignSliceGeometry(mesh, index, count) {
+  const geo = mesh.geometry.clone();
+  const uv = geo.attributes.uv;
+
+  for (let i = 0; i < uv.count; i++) {
+    const u = uv.getX(i);
+    const v = uv.getY(i);
+    uv.setXY(i, u / count + index / count, v);
+  }
+
+  geo.attributes.uv.needsUpdate = true;
+  mesh.geometry = geo;
+}
 
 /**
- * One outdoor render per wall row; each pane shows a slice (continuous panorama).
+ * One outdoor render per wall row; UV-sliced panes share the same live texture.
  */
 export function createInteriorWindowViews({ outdoorScene, outdoorRoot, renderer }) {
-  /** @type {Map<string, { rt: THREE.WebGLRenderTarget, camera: THREE.PerspectiveCamera, meshes: THREE.Mesh[] }>} */
+  /** @type {Map<string, { rt: THREE.WebGLRenderTarget, camera: THREE.PerspectiveCamera }>} */
   const wallGroups = new Map();
   const pending = [];
   const worldOffset = new THREE.Vector3();
@@ -49,35 +63,28 @@ export function createInteriorWindowViews({ outdoorScene, outdoorRoot, renderer 
       rt.texture.colorSpace = THREE.SRGBColorSpace;
       rt.texture.flipY = false;
 
-      const aspect = rtWidth / RT_HEIGHT;
-      const camera = new THREE.PerspectiveCamera(V_FOV, aspect, 0.5, 200);
+      const camera = new THREE.PerspectiveCamera(V_FOV, rtWidth / RT_HEIGHT, 0.5, 220);
 
       const ref = entries[0];
       const camPos = new THREE.Vector3(0, ref.localPosition.y, ref.localPosition.z);
       camera.position.copy(camPos).add(worldOffset);
       lookTarget.copy(camera.position).add(ref.outwardNormal);
       camera.lookAt(lookTarget);
+      camera.updateMatrixWorld(true);
 
-      wallGroups.set(wallKey, { rt, camera, meshes: [] });
-
-      const sliceW = 1 / count;
+      wallGroups.set(wallKey, { rt, camera });
 
       entries.forEach((entry, index) => {
-        const map = rt.texture.clone();
-        map.repeat.set(sliceW, 1);
-        map.offset.set(index * sliceW, 0);
-        map.wrapS = THREE.ClampToEdgeWrapping;
-        map.wrapT = THREE.ClampToEdgeWrapping;
-
+        assignSliceGeometry(entry.mesh, index, count);
         entry.mesh.material = new THREE.MeshBasicMaterial({
-          map,
+          map: rt.texture,
           toneMapped: false,
           depthWrite: false,
           depthTest: true,
           side: THREE.DoubleSide,
         });
         entry.mesh.renderOrder = 2;
-        wallGroups.get(wallKey).meshes.push(entry.mesh);
+        entry.mesh.frustumCulled = false;
       });
     }
 
@@ -91,31 +98,36 @@ export function createInteriorWindowViews({ outdoorScene, outdoorRoot, renderer 
     const prevTarget = renderer.getRenderTarget();
     const prevAutoClear = renderer.autoClear;
     const prevToneMapping = renderer.toneMapping;
+    const prevExposure = renderer.toneMappingExposure;
+    const prevPixelRatio = renderer.getPixelRatio();
 
     outdoorRoot.visible = true;
+    outdoorRoot.traverse((obj) => {
+      obj.visible = true;
+    });
     renderer.autoClear = true;
+    renderer.setPixelRatio(1);
     renderer.toneMapping = THREE.NoToneMapping;
+    renderer.toneMappingExposure = 1;
 
     for (const { rt, camera } of wallGroups.values()) {
-      camera.updateMatrixWorld(true);
       renderer.setRenderTarget(rt);
       renderer.setViewport(0, 0, rt.width, rt.height);
-      renderer.clear();
+      renderer.clear(true, true, true);
       renderer.render(outdoorScene, camera);
     }
 
     renderer.setRenderTarget(prevTarget);
+    renderer.setPixelRatio(prevPixelRatio);
     renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.autoClear = prevAutoClear;
     renderer.toneMapping = prevToneMapping;
+    renderer.toneMappingExposure = prevExposure;
     outdoorRoot.visible = false;
   }
 
   function dispose() {
-    for (const { rt, meshes } of wallGroups.values()) {
-      for (const mesh of meshes) {
-        mesh.material.dispose();
-      }
+    for (const { rt } of wallGroups.values()) {
       rt.dispose();
     }
     wallGroups.clear();

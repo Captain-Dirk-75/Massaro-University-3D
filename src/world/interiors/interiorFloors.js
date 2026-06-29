@@ -8,17 +8,17 @@ export const LIBRARY_UPPER_THRESHOLD = 3.0;
 
 /** Cut-out in the second-floor deck — must clear the full stair shaft. */
 export const LIBRARY_STAIR_HOLE = {
-  minX: -13.6,
-  maxX: -8.8,
-  minZ: -4.2,
-  maxZ: 6.4,
+  minX: -13.8,
+  maxX: -8.2,
+  minZ: -4.8,
+  maxZ: 7.0,
 };
 
 const STAIR = {
   minX: -12.9,
   maxX: -10.1,
   bottomZ: 5.5,
-  topZ: -3.5,
+  topZ: -4.0,
 };
 
 function onStaircase(x, z) {
