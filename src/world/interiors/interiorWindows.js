@@ -8,11 +8,12 @@ const V_FOV = 44;
 function assignSliceGeometry(mesh, index, count) {
   const geo = mesh.geometry.clone();
   const uv = geo.attributes.uv;
+  const slice = count - 1 - index;
 
   for (let i = 0; i < uv.count; i++) {
     const u = uv.getX(i);
     const v = uv.getY(i);
-    uv.setXY(i, u / count + index / count, v);
+    uv.setXY(i, u / count + slice / count, v);
   }
 
   geo.attributes.uv.needsUpdate = true;
