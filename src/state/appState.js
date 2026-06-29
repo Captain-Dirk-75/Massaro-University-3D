@@ -4,5 +4,6 @@
 export const appState = {
   pointerLocked: false,
   customizePanelOpen: false,
+  storePanelOpen: false,
   isReady: false,
 };

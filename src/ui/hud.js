@@ -1,6 +1,6 @@
 import { getColorById } from '../avatar/colors.js';
 
-export function createHud({ onCustomizeClick } = {}) {
+export function createHud({ onCustomizeClick, onSanctuaryClick } = {}) {
   const overlay = document.createElement('div');
   overlay.id = 'hud';
   overlay.innerHTML = `
@@ -9,9 +9,15 @@ export function createHud({ onCustomizeClick } = {}) {
       <span class="hud-player__swatch" id="hud-color-swatch"></span>
       <span class="hud-player__name" id="hud-player-name">Visitor</span>
     </div>
-    <button type="button" class="hud-customize" id="hud-customize-btn" title="Customize avatar (C)">
-      Customize
-    </button>
+    <div class="hud-actions">
+      <button type="button" class="hud-action" id="hud-sanctuary-btn" title="Course Sanctuary catalog">
+        Sanctuary
+      </button>
+      <button type="button" class="hud-action" id="hud-customize-btn" title="Customize avatar (C)">
+        Customize
+      </button>
+    </div>
+    <p class="hud-interact hud-interact--hidden" id="hud-interact"></p>
     <p class="hud-hint" data-hint="start">Click to enter · WASD to move · Mouse to look · C to customize</p>
     <p class="hud-hint hud-hint--hidden" data-hint="active">WASD to move · Mouse to look · Esc to release · C to customize</p>
   `;
@@ -61,11 +67,16 @@ export function createHud({ onCustomizeClick } = {}) {
       opacity: 0.9;
     }
 
-    .hud-customize {
+    .hud-actions {
       position: absolute;
       top: 1.35rem;
       right: 1.5rem;
+      display: flex;
+      gap: 0.45rem;
       pointer-events: auto;
+    }
+
+    .hud-action {
       padding: 0.4rem 0.75rem;
       border: 1px solid rgba(255, 255, 255, 0.22);
       border-radius: 6px;
@@ -77,8 +88,23 @@ export function createHud({ onCustomizeClick } = {}) {
       backdrop-filter: blur(4px);
     }
 
-    .hud-customize:hover {
+    .hud-action:hover {
       background: rgba(20, 24, 28, 0.65);
+    }
+
+    .hud-interact {
+      position: absolute;
+      bottom: 5.5rem;
+      font-size: 0.88rem;
+      color: #e8dcc0;
+      padding: 0.4rem 0.85rem;
+      border-radius: 6px;
+      background: rgba(20, 24, 28, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .hud-interact--hidden {
+      display: none;
     }
 
     .hud-hint {
@@ -99,9 +125,15 @@ export function createHud({ onCustomizeClick } = {}) {
   const nameEl = overlay.querySelector('#hud-player-name');
   const swatchEl = overlay.querySelector('#hud-color-swatch');
   const customizeBtn = overlay.querySelector('#hud-customize-btn');
+  const sanctuaryBtn = overlay.querySelector('#hud-sanctuary-btn');
+  const interactEl = overlay.querySelector('#hud-interact');
 
   customizeBtn.addEventListener('click', () => {
     onCustomizeClick?.();
+  });
+
+  sanctuaryBtn.addEventListener('click', () => {
+    onSanctuaryClick?.();
   });
 
   function setPointerLocked(locked) {
@@ -115,5 +147,15 @@ export function createHud({ onCustomizeClick } = {}) {
     swatchEl.style.background = `#${color.hex.toString(16).padStart(6, '0')}`;
   }
 
-  return { setPointerLocked, setPlayerProfile };
+  function setInteractPrompt(target) {
+    if (!target) {
+      interactEl.classList.add('hud-interact--hidden');
+      interactEl.textContent = '';
+      return;
+    }
+    interactEl.textContent = `Press E — ${target.label}`;
+    interactEl.classList.remove('hud-interact--hidden');
+  }
+
+  return { setPointerLocked, setPlayerProfile, setInteractPrompt };
 }

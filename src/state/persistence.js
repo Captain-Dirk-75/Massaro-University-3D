@@ -38,6 +38,11 @@ export async function load() {
       ...DEFAULT_PLAYER_STATE.session,
       ...raw.session,
     },
+    commerce: {
+      ...DEFAULT_PLAYER_STATE.commerce,
+      ...raw.commerce,
+      ownedItemIds: raw.commerce?.ownedItemIds ?? [],
+    },
   };
 }
 

@@ -8,4 +8,9 @@ export const DEFAULT_PLAYER_STATE = {
   session: {
     totalTimeOnCampus: 0,
   },
+  commerce: {
+    ownedItemIds: [],
+    activeTierId: 'guest',
+    subscriptionPeriod: null,
+  },
 };

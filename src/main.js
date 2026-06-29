@@ -3,6 +3,7 @@ import { createRenderer, handleResize } from './core/renderer.js';
 import { createCamera } from './core/camera.js';
 import { createRenderLoop } from './core/loop.js';
 import { createFirstPersonControls } from './controls/firstPerson.js';
+import { createInteractionSystem } from './controls/interaction.js';
 import { applyAtmosphere } from './world/atmosphere.js';
 import { createGround } from './world/ground.js';
 import { createLighting } from './world/lighting.js';
@@ -11,9 +12,11 @@ import { createNature } from './world/nature.js';
 import { createWaterFeature } from './world/waterFeature.js';
 import { createMotes } from './world/motes.js';
 import { createWorldAnimations } from './world/animations.js';
+import { createKiosk } from './world/kiosk.js';
 import { createPostProcessing } from './post/postProcessing.js';
 import { createHud } from './ui/hud.js';
 import { createCustomizePanel } from './ui/customizePanel.js';
+import { createStorePanel } from './ui/storePanel.js';
 import { createPlayerAvatar } from './avatar/playerAvatar.js';
 import { load } from './state/persistence.js';
 import {
@@ -24,118 +27,152 @@ import {
 } from './state/playerState.js';
 import { appState } from './state/appState.js';
 
+function isUiBlocking() {
+  return appState.customizePanelOpen || appState.storePanelOpen;
+}
+
 async function bootstrap() {
-const canvas = document.getElementById('canvas');
+  const canvas = document.getElementById('canvas');
 
-const saved = await load();
-if (saved) {
-  applyPlayerState(saved);
-}
-
-const scene = createScene();
-applyAtmosphere(scene);
-
-const renderer = createRenderer(canvas);
-const camera = createCamera();
-
-scene.add(createLighting());
-scene.add(createGround());
-scene.add(createLibrary());
-
-const { group: nature, swayTargets } = createNature();
-scene.add(nature);
-
-const { group: waterFeature, waterMaterial } = createWaterFeature();
-scene.add(waterFeature);
-
-const motes = createMotes();
-scene.add(motes.points);
-
-const playerAvatar = createPlayerAvatar(scene);
-playerAvatar.updateFromProfile(playerState.profile);
-
-const animations = createWorldAnimations({
-  swayTargets,
-  waterMaterial,
-  motes,
-});
-
-const { composer, setSize: setComposerSize } = createPostProcessing(
-  renderer,
-  scene,
-  camera,
-);
-
-let customizePanel;
-
-const hud = createHud({
-  onCustomizeClick: () => customizePanel.toggle(),
-});
-
-function applyProfileToUi(profile) {
-  hud.setPlayerProfile(profile);
-  playerAvatar.updateFromProfile(profile);
-}
-
-customizePanel = createCustomizePanel({
-  onChange: applyProfileToUi,
-  onOpenChange(open) {
-    appState.customizePanelOpen = open;
-  },
-});
-
-applyProfileToUi(playerState.profile);
-
-const controls = createFirstPersonControls(camera, canvas, {
-  onLockChange(locked) {
-    appState.pointerLocked = locked;
-    canvas.classList.toggle('is-locked', locked);
-    hud.setPointerLocked(locked);
-  },
-});
-
-canvas.addEventListener('click', (event) => {
-  if (appState.customizePanelOpen) {
-    event.stopImmediatePropagation();
+  const saved = await load();
+  if (saved) {
+    applyPlayerState(saved);
   }
-}, true);
 
-window.addEventListener('resize', () => {
-  handleResize(renderer, camera);
-  setComposerSize(window.innerWidth, window.innerHeight);
-});
+  const scene = createScene();
+  applyAtmosphere(scene);
 
-let sessionSaveTimer = 0;
+  const renderer = createRenderer(canvas);
+  const camera = createCamera();
 
-window.addEventListener('beforeunload', () => {
-  persist();
-});
+  scene.add(createLighting());
+  scene.add(createGround());
+  scene.add(createLibrary());
 
-createRenderLoop({
-  renderer,
-  scene,
-  camera,
-  render: () => composer.render(),
-  onUpdate(delta) {
-    if (!appState.customizePanelOpen) {
-      controls.update(delta);
-    }
+  const { group: nature, swayTargets } = createNature();
+  scene.add(nature);
 
-    playerAvatar.syncToCamera(camera);
-    addCampusTime(delta);
+  const { group: waterFeature, waterMaterial } = createWaterFeature();
+  scene.add(waterFeature);
 
-    sessionSaveTimer += delta;
-    if (sessionSaveTimer >= 30) {
-      sessionSaveTimer = 0;
-      persist();
-      if (customizePanel.isOpen()) {
-        customizePanel.updateSessionDisplay();
+  const motes = createMotes();
+  scene.add(motes.points);
+
+  const kiosk = createKiosk();
+  scene.add(kiosk.group);
+
+  const playerAvatar = createPlayerAvatar(scene);
+  playerAvatar.updateFromProfile(playerState.profile);
+
+  const animations = createWorldAnimations({
+    swayTargets,
+    waterMaterial,
+    motes,
+  });
+
+  const { composer, setSize: setComposerSize } = createPostProcessing(
+    renderer,
+    scene,
+    camera,
+  );
+
+  let customizePanel;
+  let storePanel;
+
+  const hud = createHud({
+    onCustomizeClick: () => customizePanel.toggle(),
+    onSanctuaryClick: () => storePanel.open(),
+  });
+
+  function applyProfileToUi(profile) {
+    hud.setPlayerProfile(profile);
+    playerAvatar.updateFromProfile(profile);
+  }
+
+  customizePanel = createCustomizePanel({
+    onChange: applyProfileToUi,
+    onOpenChange(open) {
+      appState.customizePanelOpen = open;
+    },
+  });
+
+  storePanel = createStorePanel({
+    onOpenChange(open) {
+      appState.storePanelOpen = open;
+    },
+    onCommerceChange() {
+      if (storePanel.isOpen()) {
+        storePanel.refresh();
       }
-    }
-  },
-});
+    },
+  });
 
-appState.isReady = true;
+  applyProfileToUi(playerState.profile);
+
+  const interaction = createInteractionSystem({
+    camera,
+    getTargets: () => [kiosk],
+    onInteract: () => storePanel.open(),
+    isBlocked: isUiBlocking,
+  });
+
+  const controls = createFirstPersonControls(camera, canvas, {
+    onLockChange(locked) {
+      appState.pointerLocked = locked;
+      canvas.classList.toggle('is-locked', locked);
+      hud.setPointerLocked(locked);
+    },
+  });
+
+  canvas.addEventListener(
+    'click',
+    (event) => {
+      if (isUiBlocking()) {
+        event.stopImmediatePropagation();
+      }
+    },
+    true,
+  );
+
+  window.addEventListener('resize', () => {
+    handleResize(renderer, camera);
+    setComposerSize(window.innerWidth, window.innerHeight);
+  });
+
+  let sessionSaveTimer = 0;
+
+  window.addEventListener('beforeunload', () => {
+    persist();
+  });
+
+  createRenderLoop({
+    renderer,
+    scene,
+    camera,
+    render: () => composer.render(),
+    onUpdate(delta) {
+      if (!isUiBlocking()) {
+        controls.update(delta);
+      }
+
+      playerAvatar.syncToCamera(camera);
+      addCampusTime(delta);
+
+      const nearTarget = interaction.update();
+      hud.setInteractPrompt(nearTarget);
+
+      sessionSaveTimer += delta;
+      if (sessionSaveTimer >= 30) {
+        sessionSaveTimer = 0;
+        persist();
+        if (customizePanel.isOpen()) {
+          customizePanel.updateSessionDisplay();
+        }
+      }
+    },
+  });
+
+  appState.isReady = true;
 }
 
 bootstrap();

@@ -1,5 +1,5 @@
 /**
- * Persisted player identity + session — single source of truth.
+ * Persisted player identity + session + commerce — single source of truth.
  * Mutate via the helpers below; persistence.save() is called automatically.
  */
 import { DEFAULT_PLAYER_STATE } from './defaults.js';
@@ -17,6 +17,9 @@ export function applyPlayerState(loaded) {
   if (!playerState.session) {
     playerState.session = structuredClone(DEFAULT_PLAYER_STATE.session);
   }
+  if (!playerState.commerce) {
+    playerState.commerce = structuredClone(DEFAULT_PLAYER_STATE.commerce);
+  }
 }
 
 export function updateProfile(changes) {
@@ -26,6 +29,19 @@ export function updateProfile(changes) {
 
 export function addCampusTime(seconds) {
   playerState.session.totalTimeOnCampus += seconds;
+}
+
+export function recordItemPurchase(itemId) {
+  if (!playerState.commerce.ownedItemIds.includes(itemId)) {
+    playerState.commerce.ownedItemIds.push(itemId);
+  }
+  persist();
+}
+
+export function setSubscription(tierId, period) {
+  playerState.commerce.activeTierId = tierId;
+  playerState.commerce.subscriptionPeriod = period;
+  persist();
 }
 
 export function persist() {
