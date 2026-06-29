@@ -6,6 +6,7 @@ import {
   updateProfile,
   resetToDefaults,
 } from '../state/playerState.js';
+import { appState } from '../state/appState.js';
 
 function formatCampusTime(seconds) {
   const total = Math.floor(seconds);
@@ -425,8 +426,9 @@ export function createCustomizePanel({ onChange, onOpenChange }) {
 
   document.addEventListener('keydown', (event) => {
     if (event.code !== 'KeyC') return;
-    if (event.target === nameInput) return;
     if (event.repeat) return;
+    if (event.target.matches('input, textarea, select')) return;
+    if (appState.guidePanelOpen || appState.storePanelOpen) return;
     event.preventDefault();
     toggle();
   });
