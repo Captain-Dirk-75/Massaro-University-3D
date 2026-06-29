@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { applyCollisionMovement } from './collisions.js';
 
-const STAIR_SNAP_LOW = 0.08;
+// Must sit just ABOVE a building's flat floor thickness (floorHeight ≈ 0.14) so
+// standing on a ground floor reads as 'ground', not 'stair' — otherwise
+// 'ground'-level interior colliders (partitions, furniture) would be skipped.
+const STAIR_SNAP_LOW = 0.25;
 const STAIR_SNAP_HIGH_OFFSET = 0.15;
 
 const MOVE_SPEED = 5;

@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-29 (library interior layout redesign)
+**Last updated:** 2026-06-30 (library interior rebuilt to a clean spec)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-30 — Library interior rebuilt to a clean spec on the proven createCompoundBuilding system: entrance fully clear (stair foot moved 4.5 m back off the door centreline); deepened to 20 m for a grand double-height hall; free-standing split staircase rises centrally and splits to a gallery ring with railings; tall chandeliers (~4.6 m clearance) + 3 m wall sconces so the player never meets a lamp; logical bays (hall + 2 ground reading rooms + gallery + upper reading room + gated upper archive) via real per-floor doorways; fixed collider-level classification so ground-floor interior walls/furniture actually collide; gated archive kept data-driven & live
 - 2026-06-29 — Library interior redesign: double-height hall, grand split staircase, gallery railings, chandelier/sconce lighting, logical room layout; ground masked inside footprints; facade deck pulled clear of doorway
 - 2026-06-29 — Library interior walkability: reception desk moved off entry path; stairs repositioned clear of east wall; partition colliders use Pavilion-style `all` level
 - 2026-06-29 — Fix library structural regression: facade is decoration-only layer; walls/windows/door/colliders restored; 4 columns frame doorway

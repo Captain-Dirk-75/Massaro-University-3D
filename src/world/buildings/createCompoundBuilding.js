@@ -117,11 +117,13 @@ function buildRoomLighting(room, floorIndex, storyHeight, floorHeight, totalHeig
   const style = room.lightStyle ?? 'hanging';
 
   if (style === 'chandelier') {
-    const c = room.chandelier ?? { x: room.x ?? 0, z: room.z ?? 0 };
-    const hangY = c.fromY === 'total' ? totalHeight - 0.2 : ceiling.bottomY;
-    buildChandelier(c.x, c.z, hangY, palette, lightsGroup, {
-      cordLength: c.cordLength ?? 3.0,
-    });
+    const list = room.chandeliers ?? [room.chandelier ?? { x: room.x ?? 0, z: room.z ?? 0 }];
+    for (const c of list) {
+      const hangY = c.fromY === 'total' ? totalHeight - 0.2 : ceiling.bottomY;
+      buildChandelier(c.x, c.z, hangY, palette, lightsGroup, {
+        cordLength: c.cordLength ?? 3.0,
+      });
+    }
     return;
   }
 
@@ -256,7 +258,9 @@ export function createCompoundBuilding(opts) {
     buildFloorDeck(insetW, insetD, floorY - floorHeight, floorHeight, deckHoles, palette, linerGroup);
 
     const ceilingY = (floorIndex + 1) * storyHeight - 0.06 - 0.07;
-    const beams = floorIndex === floorCount - 1 ? ceilingBeams : Math.min(ceilingBeams, 3);
+    // Beams only on the top (grand) ceiling — lower ceilings have the hall void
+    // cut into them, so beams there would float over open air.
+    const beams = floorIndex === floorCount - 1 ? ceilingBeams : 0;
     const ceiling = buildInteriorCeiling(
       insetW, insetD, ceilingY, palette, linerGroup, beams,
       holesForFloor(floorIndex, ceilingHoles, null),
