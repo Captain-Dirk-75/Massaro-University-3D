@@ -281,9 +281,12 @@ export function buildLibrary(area) {
   }
 
   const steps = [6, 4.5, 3];
+  const stepRun = 1.05;
+  const stepBaseZ = 4.6;
   steps.forEach((width, i) => {
     const step = createExtrudedBlock(width, 1.1, 0.2, 0.08);
-    step.position.set(0, 0.2 * (i + 1), 4.6 + i * 1.05);
+    const runIndex = steps.length - 1 - i;
+    step.position.set(0, 0.22 * (i + 1), stepBaseZ + runIndex * stepRun);
     library.add(step);
   });
 

@@ -20,7 +20,9 @@ export function createInteractionSystem({ camera, getTargets, onInteract, isBloc
 
     for (const target of targets) {
       interactPosition.copy(target.position);
-      const dist = camera.position.distanceTo(interactPosition);
+      const dx = camera.position.x - interactPosition.x;
+      const dz = camera.position.z - interactPosition.z;
+      const dist = Math.hypot(dx, dz);
       if (dist <= target.radius && dist < closestDist) {
         closest = target;
         closestDist = dist;

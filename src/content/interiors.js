@@ -18,8 +18,8 @@ export const INTERIORS = [
     buildingId: 'library',
     name: 'Library',
     entrance: {
-      position: { x: 0, y: 0, z: -29 },
-      radius: 4.2,
+      position: { x: 0, y: 0, z: -27.5 },
+      radius: 5,
       label: 'Enter Library',
     },
     exit: {
@@ -28,7 +28,7 @@ export const INTERIORS = [
       label: 'Exit to Campus',
     },
     spawn: { x: 0, y: 1.7, z: 10, yaw: Math.PI },
-    returnSpawn: { x: 0, y: 1.7, z: -29, yaw: 0 },
+    returnSpawn: { x: 0, y: 1.7, z: -27.5, yaw: 0 },
     room: { width: 28, depth: 32, height: 6.2 },
     build: 'library',
     furniture: {

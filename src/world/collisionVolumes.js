@@ -5,7 +5,8 @@ export const PLAYER_RADIUS = 0.38;
 
 /** Per-builder collision half-extents (world units, tuned to procedural meshes). */
 const BUILD_COLLIDERS = {
-  library: { halfW: 21, halfD: 9.5, offsetX: 0, offsetZ: 0.5 },
+  // south face (maxZ) stops short of the portico so players can approach the door
+  library: { halfW: 19, halfD: 5.5, offsetX: 0, offsetZ: -2.5 },
   'water-feature': { halfW: 6.5, halfD: 8.5, offsetX: 0, offsetZ: 0 },
   'patron-garden': { halfW: 7.5, halfD: 6.5, offsetX: 0, offsetZ: 0 },
   'stillness-pavilion': { halfW: 5.5, halfD: 5, offsetX: 0, offsetZ: 0 },
