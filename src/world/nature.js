@@ -10,7 +10,7 @@ export const FOLIAGE_SWAY_AMOUNT = 0.045;
 export const FOLIAGE_SWAY_SPEED = 0.65;
 export const TREE_COUNT_TARGET = 42;
 export const LEAVES_PER_TREE = 18;
-export const BRANCHES_PER_TREE_MIN = 3;
+export const BRANCH_FOLIAGE_CLUSTERS = 3;
 
 const FOLIAGE_MATERIAL = new THREE.MeshStandardMaterial({
   vertexColors: true,
@@ -26,6 +26,10 @@ const LEAF_MATERIAL = new THREE.MeshStandardMaterial({
   flatShading: true,
   side: THREE.DoubleSide,
 });
+
+const UP = new THREE.Vector3(0, 1, 0);
+const _tip = new THREE.Vector3();
+const _quat = new THREE.Quaternion();
 
 function isExcluded(wx, wz) {
   if (isStonePath(wx, wz)) return true;
@@ -51,7 +55,18 @@ function fallbackFoliageGeometry(radius, seed, profile) {
   return geo;
 }
 
-function safeMerge(geometries, fallbackRadius, scale, seed = 1, profile) {
+function normalizeGeometryBase(geometry, overlap = 0) {
+  geometry.computeBoundingBox();
+  const minY = geometry.boundingBox.min.y;
+  if (Number.isFinite(minY) && minY !== 0) {
+    geometry.translate(0, -minY - overlap, 0);
+  }
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function safeMergeFoliage(geometries, fallbackRadius, seed, profile) {
   const valid = geometries.filter(Boolean);
   if (valid.length === 0) {
     return fallbackFoliageGeometry(fallbackRadius, seed, profile);
@@ -62,6 +77,12 @@ function safeMerge(geometries, fallbackRadius, scale, seed = 1, profile) {
   }
   merged.computeBoundingSphere();
   return merged;
+}
+
+function safeMergeWood(geometries) {
+  const valid = geometries.filter(Boolean);
+  if (valid.length === 0) return null;
+  return mergeGeometries(valid, false);
 }
 
 function buildCanopyGeometry(scale, seed, profile) {
@@ -84,94 +105,136 @@ function buildCanopyGeometry(scale, seed, profile) {
     const geo = new THREE.IcosahedronGeometry(radius, 1);
     applyVertexColor(geo, foliageColor(rand, 0.12, profileShift(profile)));
 
+    let scaleY = 1;
+    let scaleXZ = 1;
     if (profile.id === 'wide' && rand() > 0.4) {
-      geo.applyMatrix4(new THREE.Matrix4().makeScale(1.15, 0.72, 1.1));
+      scaleY = 0.72;
+      scaleXZ = 1.12;
     } else if (profile.id === 'tall' && rand() > 0.35) {
-      geo.applyMatrix4(new THREE.Matrix4().makeScale(0.85, 1.12, 0.88));
+      scaleY = 1.12;
+      scaleXZ = 0.88;
     }
 
-    const layerY = i === 0 ? radius : i * scale * spread + radius;
+    const layerY = i === 0 ? radius * scaleY : i * scale * spread + radius * scaleY;
     const matrix = new THREE.Matrix4();
-    matrix.makeTranslation(
-      asymX + (rand() - 0.5) * scale * jitter,
-      layerY,
-      asymZ + (rand() - 0.5) * scale * jitter,
+    matrix.compose(
+      new THREE.Vector3(
+        asymX + (rand() - 0.5) * scale * jitter,
+        layerY,
+        asymZ + (rand() - 0.5) * scale * jitter,
+      ),
+      new THREE.Quaternion(),
+      new THREE.Vector3(scaleXZ, scaleY, scaleXZ),
     );
     geo.applyMatrix4(matrix);
     pieces.push(geo);
   }
 
-  return safeMerge(pieces, scale * 1.1, scale, seed, profile);
+  const merged = safeMergeFoliage(pieces, scale * 1.1, seed, profile);
+  return normalizeGeometryBase(merged, scale * 0.2);
 }
 
-function buildBranchGeometry(scale, trunkH, seed, profile) {
+function addFoliageCluster(pieces, center, scale, rand, profile, radiusMul = 1) {
+  const clusters = BRANCH_FOLIAGE_CLUSTERS + Math.floor(rand() * 2);
+  for (let c = 0; c < clusters; c++) {
+    const r = scale * (0.1 + rand() * 0.12) * radiusMul;
+    const geo = new THREE.IcosahedronGeometry(r, 1);
+    applyVertexColor(geo, foliageColor(rand, 0.1, profileShift(profile)));
+
+    const matrix = new THREE.Matrix4();
+    matrix.setPosition(
+      center.x + (rand() - 0.5) * r * 1.8,
+      center.y + (rand() - 0.5) * r * 1.4,
+      center.z + (rand() - 0.5) * r * 1.8,
+    );
+    geo.applyMatrix4(matrix);
+    pieces.push(geo);
+  }
+}
+
+function buildBranches(scale, trunkH, seed, profile) {
   const rand = seededRandom(seed + 31);
+  const woodPieces = [];
+  const foliagePieces = [];
   const count =
     profile.branchCount[0] +
     Math.floor(rand() * (profile.branchCount[1] - profile.branchCount[0] + 1));
-  const pieces = [];
   const lenMin = profile.branchLength[0];
   const lenMax = profile.branchLength[1];
   const angleSpread = sampleRange(profile.branchAngle, rand());
 
   for (let b = 0; b < count; b++) {
-    const heightT = 0.22 + rand() * 0.62;
+    const attachY = trunkH * (0.22 + rand() * 0.62);
     const len = scale * (lenMin + rand() * (lenMax - lenMin));
-    const thickTop = 0.014 + rand() * 0.012;
-    const thickBase = 0.04 + rand() * 0.028;
+    const azimuth = rand() * Math.PI * 2;
+    const elevation = (rand() - 0.5) * angleSpread * (profile.id === 'wide' ? 1.15 : 0.9);
 
-    const geo = new THREE.CylinderGeometry(
-      thickTop * scale,
-      thickBase * scale,
-      len,
-      5,
-    );
-    geo.translate(0, len / 2, 0);
-    geo.rotateZ(
-      Math.PI / 2 + (rand() - 0.5) * angleSpread * (profile.id === 'wide' ? 1.2 : 1),
-    );
-    geo.rotateY(rand() * Math.PI * 2);
-    if (profile.id === 'mature' && rand() > 0.55) {
-      geo.rotateX((rand() - 0.5) * 0.35);
+    const branchDir = new THREE.Vector3(
+      Math.cos(azimuth) * Math.cos(elevation),
+      Math.sin(elevation),
+      Math.sin(azimuth) * Math.cos(elevation),
+    ).normalize();
+
+    const thickTop = (0.014 + rand() * 0.012) * scale;
+    const thickBase = (0.04 + rand() * 0.028) * scale;
+    const branchGeo = new THREE.CylinderGeometry(thickTop, thickBase, len, 5);
+    branchGeo.translate(0, len / 2, 0);
+    _quat.setFromUnitVectors(UP, branchDir);
+
+    const mid = branchDir.clone().multiplyScalar(len / 2);
+    mid.y += attachY;
+
+    const woodMatrix = new THREE.Matrix4().compose(mid, _quat, new THREE.Vector3(1, 1, 1));
+    branchGeo.applyMatrix4(woodMatrix);
+    woodPieces.push(branchGeo);
+
+    _tip.set(0, attachY, 0).add(branchDir.clone().multiplyScalar(len));
+    addFoliageCluster(foliagePieces, _tip, scale, rand, profile, 1.05);
+
+    if (len > scale * 0.55) {
+      const midPoint = new THREE.Vector3(0, attachY, 0).add(
+        branchDir.clone().multiplyScalar(len * 0.55),
+      );
+      addFoliageCluster(foliagePieces, midPoint, scale, rand, profile, 0.75);
     }
 
-    const matrix = new THREE.Matrix4();
-    matrix.setPosition(0, trunkH * heightT, 0);
-    geo.applyMatrix4(matrix);
-    pieces.push(geo);
-
-    if (profile.id === 'mature' && rand() > 0.45) {
-      const twigLen = len * (0.28 + rand() * 0.22);
-      const twig = new THREE.CylinderGeometry(
-        thickTop * scale * 0.55,
-        thickTop * scale * 1.4,
+    if (profile.id === 'mature' && rand() > 0.4) {
+      const twigLen = len * (0.3 + rand() * 0.2);
+      const twigDir = branchDir
+        .clone()
+        .add(
+          new THREE.Vector3((rand() - 0.5) * 0.4, rand() * 0.25, (rand() - 0.5) * 0.4),
+        )
+        .normalize();
+      const twigGeo = new THREE.CylinderGeometry(
+        thickTop * 0.5,
+        thickTop * 1.2,
         twigLen,
         4,
       );
-      twig.translate(0, twigLen / 2, 0);
-      twig.rotateZ(Math.PI / 2 + (rand() - 0.5) * 0.8);
-      twig.rotateY(rand() * Math.PI * 2);
-      const twigMatrix = new THREE.Matrix4();
-      twigMatrix.setPosition(
-        Math.cos(rand() * Math.PI * 2) * len * 0.85,
-        trunkH * heightT + len * 0.15,
-        Math.sin(rand() * Math.PI * 2) * len * 0.85,
+      twigGeo.translate(0, twigLen / 2, 0);
+      _quat.setFromUnitVectors(UP, twigDir);
+      const twigCenter = _tip.clone().add(twigDir.clone().multiplyScalar(twigLen * 0.42));
+      twigGeo.applyMatrix4(
+        new THREE.Matrix4().compose(twigCenter, _quat, new THREE.Vector3(1, 1, 1)),
       );
-      twig.applyMatrix4(twigMatrix);
-      pieces.push(twig);
+      woodPieces.push(twigGeo);
+
+      const twigTip = _tip.clone().add(twigDir.clone().multiplyScalar(twigLen * 0.9));
+      addFoliageCluster(foliagePieces, twigTip, scale, rand, profile, 0.6);
     }
   }
 
-  if (pieces.length === 0) return null;
-  return safeMerge(pieces, scale * 0.2, scale, seed + 31, profile);
+  return {
+    wood: safeMergeWood(woodPieces),
+    foliage: safeMergeFoliage(foliagePieces, scale * 0.25, seed + 31, profile),
+  };
 }
 
-function buildLeafGeometry(scale, seed, profile) {
+function buildLeafGeometry(scale, seed, profile, canopyBaseY) {
   const rand = seededRandom(seed + 99);
   const pieces = [];
-  const leafCount = Math.floor(
-    sampleRange(profile.leafCount, rand()),
-  );
+  const leafCount = Math.floor(sampleRange(profile.leafCount, rand()));
   const spreadMin = profile.leafSpread[0];
   const spreadMax = profile.leafSpread[1];
 
@@ -189,10 +252,9 @@ function buildLeafGeometry(scale, seed, profile) {
     const theta = rand() * Math.PI * 2;
     const phi = rand() * Math.PI * 0.58;
     const dist = scale * (spreadMin + rand() * (spreadMax - spreadMin));
-    const y = scale * (0.55 + rand() * 1.25);
+    const y = canopyBaseY + scale * (0.55 + rand() * 1.25);
 
     const matrix = new THREE.Matrix4();
-    matrix.makeRotationY(theta);
     matrix.setPosition(
       Math.sin(phi) * Math.cos(theta) * dist,
       y,
@@ -202,7 +264,7 @@ function buildLeafGeometry(scale, seed, profile) {
     pieces.push(geo);
   }
 
-  return safeMerge(pieces, scale * 0.15, scale, seed + 99, profile);
+  return safeMergeFoliage(pieces, scale * 0.15, seed + 99, profile);
 }
 
 function createTree(treeDef) {
@@ -214,7 +276,6 @@ function createTree(treeDef) {
   const trunkBase = trunkTop * (1.6 + rand() * 0.55);
   const y = sampleGroundHeight(x, z);
   const rotY = rand() * Math.PI * 2;
-  const canopySink = scale * (0.1 + rand() * 0.06);
   const bark = trunkColor(rand);
 
   const tree = new THREE.Group();
@@ -228,7 +289,13 @@ function createTree(treeDef) {
     flatShading: true,
   });
 
-  const trunkGeo = new THREE.CylinderGeometry(trunkTop, trunkBase, 1, 7 + Math.floor(rand() * 3), 1);
+  const trunkGeo = new THREE.CylinderGeometry(
+    trunkTop,
+    trunkBase,
+    1,
+    7 + Math.floor(rand() * 3),
+    1,
+  );
   trunkGeo.translate(0, 0.5, 0);
   const trunk = new THREE.Mesh(trunkGeo, trunkMat);
   trunk.scale.set(scale, trunkH, scale);
@@ -236,33 +303,39 @@ function createTree(treeDef) {
   trunk.receiveShadow = true;
   tree.add(trunk);
 
-  const branchGeo = buildBranchGeometry(scale, trunkH, seed, profile);
-  if (branchGeo) {
-    const branches = new THREE.Mesh(branchGeo, trunkMat);
-    branches.castShadow = true;
-    tree.add(branches);
+  const branches = buildBranches(scale, trunkH, seed, profile);
+  if (branches.wood) {
+    const branchWood = new THREE.Mesh(branches.wood, trunkMat);
+    branchWood.castShadow = true;
+    tree.add(branchWood);
   }
 
   const crown = new THREE.Group();
-  crown.position.y = trunkH - canopySink;
   crown.frustumCulled = false;
 
-  const canopy = new THREE.Mesh(
-    buildCanopyGeometry(scale, seed + 17, profile),
-    FOLIAGE_MATERIAL,
-  );
+  const canopyGeo = buildCanopyGeometry(scale, seed + 17, profile);
+  const canopy = new THREE.Mesh(canopyGeo, FOLIAGE_MATERIAL);
+  canopy.position.y = trunkH;
   canopy.castShadow = true;
   canopy.receiveShadow = true;
   canopy.frustumCulled = false;
   crown.add(canopy);
 
   const leaves = new THREE.Mesh(
-    buildLeafGeometry(scale, seed + 53, profile),
+    buildLeafGeometry(scale, seed + 53, profile, trunkH),
     LEAF_MATERIAL,
   );
   leaves.castShadow = true;
   leaves.frustumCulled = false;
   crown.add(leaves);
+
+  if (branches.foliage) {
+    const branchFoliage = new THREE.Mesh(branches.foliage, FOLIAGE_MATERIAL);
+    branchFoliage.castShadow = true;
+    branchFoliage.receiveShadow = true;
+    branchFoliage.frustumCulled = false;
+    crown.add(branchFoliage);
+  }
 
   crown.userData.swayPhase = rand() * Math.PI * 2;
   crown.userData.swayAmount =
@@ -271,7 +344,7 @@ function createTree(treeDef) {
 
   const perch = {
     x,
-    y: y + trunkH + scale * (profile.id === 'wide' ? 0.7 : 0.95),
+    y: y + trunkH + scale * (profile.id === 'wide' ? 0.85 : 1.05),
     z,
     label: 'tree',
   };
@@ -306,7 +379,7 @@ function createBushInstances(bushDefs) {
     }
 
     const bush = new THREE.Mesh(
-      safeMerge(pieces, scale * 0.4, scale, seed, TREE_PROFILES[0]),
+      safeMergeFoliage(pieces, scale * 0.4, seed, TREE_PROFILES[0]),
       FOLIAGE_MATERIAL,
     );
     bush.position.set(x, y, z);
