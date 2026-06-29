@@ -21,6 +21,7 @@ export function createHud({ onCustomizeClick, onSanctuaryClick, onGuideClick } =
       </button>
     </div>
     <p class="hud-interact hud-interact--hidden" id="hud-interact"></p>
+    <p class="hud-gate hud-gate--hidden" id="hud-gate"></p>
     <p class="hud-hint" data-hint="start">Click to enter · WASD to move · Mouse to look · C to customize</p>
     <p class="hud-hint hud-hint--hidden" data-hint="active">WASD to move · Mouse to look · Esc to release · C to customize</p>
   `;
@@ -110,6 +111,24 @@ export function createHud({ onCustomizeClick, onSanctuaryClick, onGuideClick } =
       display: none;
     }
 
+    .hud-gate {
+      position: absolute;
+      bottom: 7.5rem;
+      max-width: min(420px, 90vw);
+      text-align: center;
+      font-size: 0.86rem;
+      color: #e0d4c0;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      background: rgba(40, 36, 32, 0.55);
+      border: 1px solid rgba(200, 180, 150, 0.2);
+      line-height: 1.45;
+    }
+
+    .hud-gate--hidden {
+      display: none;
+    }
+
     .hud-hint {
       font-size: 0.95rem;
       opacity: 0.9;
@@ -131,6 +150,7 @@ export function createHud({ onCustomizeClick, onSanctuaryClick, onGuideClick } =
   const sanctuaryBtn = overlay.querySelector('#hud-sanctuary-btn');
   const guideBtn = overlay.querySelector('#hud-guide-btn');
   const interactEl = overlay.querySelector('#hud-interact');
+  const gateEl = overlay.querySelector('#hud-gate');
 
   guideBtn.addEventListener('click', () => {
     onGuideClick?.();
@@ -165,5 +185,15 @@ export function createHud({ onCustomizeClick, onSanctuaryClick, onGuideClick } =
     interactEl.classList.remove('hud-interact--hidden');
   }
 
-  return { setPointerLocked, setPlayerProfile, setInteractPrompt };
+  function setGateMessage(message) {
+    if (!message) {
+      gateEl.classList.add('hud-gate--hidden');
+      gateEl.textContent = '';
+      return;
+    }
+    gateEl.textContent = message;
+    gateEl.classList.remove('hud-gate--hidden');
+  }
+
+  return { setPointerLocked, setPlayerProfile, setInteractPrompt, setGateMessage };
 }

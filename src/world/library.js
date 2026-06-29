@@ -110,9 +110,10 @@ function createArchedWindow(width, height) {
 /**
  * Elegant library entrance facade — columns, arches, warm-lit windows.
  */
-export function createLibrary() {
+export function buildLibrary(area) {
   const library = new THREE.Group();
-  library.position.set(0, 0, -34);
+  library.position.set(area.position.x, area.position.y, area.position.z);
+  library.userData.campusAreaId = area.id;
 
   const facadeWidth = 30;
   const facadeHeight = 11;

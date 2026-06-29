@@ -1,4 +1,6 @@
-import { getTierById } from '../content/catalog.js';
+import { getItemById, getTierById } from '../content/catalog.js';
+
+const TIER_RANK = { guest: 0, member: 1, patron: 2 };
 
 /**
  * Single access check — used everywhere content gating is needed.
@@ -38,4 +40,43 @@ export function getAccessLabel(item, state) {
   if (ownedIds.includes(item.id)) return 'owned';
 
   return 'entitled';
+}
+
+/**
+ * Campus area access — reuses hasAccess for item gates, tier rank for tier gates.
+ */
+export function hasAreaAccess(area, state) {
+  if (!area) return false;
+  if (area.access === 'open') return true;
+
+  if (typeof area.access !== 'object') return false;
+
+  if (area.access.requiresTier) {
+    const active = state.commerce?.activeTierId ?? 'guest';
+    const required = area.access.requiresTier;
+    return (TIER_RANK[active] ?? 0) >= (TIER_RANK[required] ?? 99);
+  }
+
+  if (area.access.requiresItem) {
+    const item = getItemById(area.access.requiresItem);
+    return hasAccess(item, state);
+  }
+
+  return false;
+}
+
+export function getAreaLockedMessage(area) {
+  if (area.lockedMessage) return area.lockedMessage;
+
+  if (area.access?.requiresTier) {
+    const tier = getTierById(area.access.requiresTier);
+    return `${area.name} opens to ${tier?.name ?? area.access.requiresTier} members.`;
+  }
+
+  if (area.access?.requiresItem) {
+    const item = getItemById(area.access.requiresItem);
+    return `${area.name} opens to those who hold ${item?.title ?? 'the required offering'}.`;
+  }
+
+  return `${area.name} is not open to you yet.`;
 }

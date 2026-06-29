@@ -7,9 +7,9 @@ import { createInteractionSystem } from './controls/interaction.js';
 import { applyAtmosphere } from './world/atmosphere.js';
 import { createGround } from './world/ground.js';
 import { createLighting } from './world/lighting.js';
-import { createLibrary } from './world/library.js';
+import { createCampus } from './world/campusBuilder.js';
+import { createAreaGates } from './world/areaGates.js';
 import { createNature } from './world/nature.js';
-import { createWaterFeature } from './world/waterFeature.js';
 import { createMotes } from './world/motes.js';
 import { createWorldAnimations } from './world/animations.js';
 import { createKiosk } from './world/kiosk.js';
@@ -53,13 +53,12 @@ async function bootstrap() {
 
   scene.add(createLighting());
   scene.add(createGround());
-  scene.add(createLibrary());
+
+  const campus = createCampus();
+  scene.add(campus.root);
 
   const { group: nature, swayTargets } = createNature();
   scene.add(nature);
-
-  const { group: waterFeature, waterMaterial } = createWaterFeature();
-  scene.add(waterFeature);
 
   const motes = createMotes();
   scene.add(motes.points);
@@ -75,7 +74,7 @@ async function bootstrap() {
 
   const animations = createWorldAnimations({
     swayTargets,
-    waterMaterial,
+    waterMaterial: campus.waterMaterial,
     motes,
   });
 
@@ -95,6 +94,13 @@ async function bootstrap() {
     onSanctuaryClick: () => storePanel.open(),
   });
 
+  const areaGates = createAreaGates({
+    gatedAreas: campus.gatedAreas,
+    getState: () => playerState,
+    onGateMessage: (message) => hud.setGateMessage(message),
+  });
+  scene.add(areaGates.root);
+
   function applyProfileToUi(profile) {
     hud.setPlayerProfile(profile);
     playerAvatar.updateFromProfile(profile);
@@ -112,6 +118,7 @@ async function bootstrap() {
       appState.storePanelOpen = open;
     },
     onCommerceChange() {
+      areaGates.refresh();
       if (storePanel.isOpen()) {
         storePanel.refresh();
       }
@@ -183,6 +190,7 @@ async function bootstrap() {
 
       const nearTarget = interaction.update();
       hud.setInteractPrompt(nearTarget);
+      areaGates.update(camera);
 
       sessionSaveTimer += delta;
       if (sessionSaveTimer >= 30) {

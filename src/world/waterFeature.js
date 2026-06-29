@@ -93,9 +93,10 @@ function createStoneRim(width, depth, thickness, height) {
   return group;
 }
 
-export function createWaterFeature() {
+export function buildWaterFeature(area) {
   const feature = new THREE.Group();
-  feature.position.set(0, 0, -18);
+  feature.position.set(area.position.x, area.position.y, area.position.z);
+  feature.userData.campusAreaId = area.id;
 
   const poolWidth = 10;
   const poolDepth = 14;
