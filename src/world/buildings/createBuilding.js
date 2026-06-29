@@ -10,6 +10,21 @@ export const INTERIOR_EMISSIVE = 0xfff0d8;
 export const INTERIOR_EMISSIVE_INTENSITY = 0.12;
 export const WOOD_COLOR = 0x8a7060;
 
+// Interior ceiling (matches library topCeiling feel)
+export const CEILING_COLOR = 0xf0ebe2;
+export const CEILING_THICKNESS = 0.14;
+export const CEILING_GAP_BELOW_ROOF = 0.06;
+
+// Hanging lights (matches libraryInterior buildHangingLights)
+export const CEILING_LIGHT_WARMTH = 0xffd8a0;
+export const CEILING_LIGHT_SHADE_COLOR = 0xf0e8d8;
+export const CEILING_LIGHT_EMISSIVE_INTENSITY = 0.28;
+export const CEILING_LIGHT_CORD_LENGTH = 1.4;
+export const CEILING_LIGHT_SHADE_HEIGHT = 0.38;
+export const CEILING_LIGHT_MARGIN = 0.55;
+export const INTERIOR_FILL_LIGHT_INTENSITY = 0.9;
+export const INTERIOR_FILL_LIGHT_DISTANCE = 18;
+
 const GLASS_RENDER_ORDER = 2;
 
 /** Wall segments with bottom Y above this do not get walking colliders (door/window headers). */
@@ -63,6 +78,92 @@ function woodMat() {
     roughness: 0.82,
     metalness: 0.02,
   });
+}
+
+function ceilingMat() {
+  return new THREE.MeshStandardMaterial({
+    color: CEILING_COLOR,
+    emissive: INTERIOR_EMISSIVE,
+    emissiveIntensity: INTERIOR_EMISSIVE_INTENSITY * 0.45,
+    roughness: 0.92,
+    metalness: 0,
+  });
+}
+
+function defaultCeilingLightCount(width, depth) {
+  const area = width * depth;
+  if (area < 50) return 2;
+  if (area < 90) return 3;
+  return 4;
+}
+
+function ceilingLightPositions(halfW, halfD, count) {
+  const mx = halfW * CEILING_LIGHT_MARGIN;
+  const mz = halfD * CEILING_LIGHT_MARGIN;
+  const grid = [
+    [-mx, -mz], [mx, -mz], [-mx, mz], [mx, mz],
+    [0, 0], [-mx, 0], [mx, 0], [0, -mz], [0, mz],
+  ];
+  return grid.slice(0, count);
+}
+
+function buildInteriorCeiling(width, depth, wallThickness, wallHeight, linerGroup) {
+  const insetW = width - wallThickness * 2;
+  const insetD = depth - wallThickness * 2;
+  const ceilingY = wallHeight - CEILING_GAP_BELOW_ROOF - CEILING_THICKNESS / 2;
+
+  const ceiling = addShadowed(
+    new THREE.Mesh(new THREE.BoxGeometry(insetW, CEILING_THICKNESS, insetD), ceilingMat()),
+  );
+  ceiling.position.set(0, ceilingY, 0);
+  linerGroup.add(ceiling);
+
+  return {
+    bottomY: ceilingY - CEILING_THICKNESS / 2,
+    centerY: ceilingY,
+  };
+}
+
+function buildCeilingLights(halfW, halfD, ceilingBottomY, count, lightsGroup) {
+  for (const [x, z] of ceilingLightPositions(halfW, halfD, count)) {
+    const cord = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.015, 0.015, CEILING_LIGHT_CORD_LENGTH, 6),
+      new THREE.MeshStandardMaterial({ color: 0x3a3835, roughness: 0.9 }),
+    );
+    cord.position.set(
+      x,
+      ceilingBottomY - CEILING_LIGHT_CORD_LENGTH / 2,
+      z,
+    );
+    lightsGroup.add(cord);
+
+    const shade = addShadowed(
+      new THREE.Mesh(
+        new THREE.CylinderGeometry(0.34, 0.44, CEILING_LIGHT_SHADE_HEIGHT, 12, 1, true),
+        new THREE.MeshStandardMaterial({
+          color: CEILING_LIGHT_SHADE_COLOR,
+          emissive: CEILING_LIGHT_WARMTH,
+          emissiveIntensity: CEILING_LIGHT_EMISSIVE_INTENSITY,
+          roughness: 0.75,
+          side: THREE.DoubleSide,
+        }),
+      ),
+    );
+    shade.position.set(
+      x,
+      ceilingBottomY - CEILING_LIGHT_CORD_LENGTH - CEILING_LIGHT_SHADE_HEIGHT / 2,
+      z,
+    );
+    lightsGroup.add(shade);
+  }
+
+  const fill = new THREE.PointLight(
+    CEILING_LIGHT_WARMTH,
+    INTERIOR_FILL_LIGHT_INTENSITY,
+    INTERIOR_FILL_LIGHT_DISTANCE,
+  );
+  fill.position.set(0, ceilingBottomY - 1.1, 0);
+  lightsGroup.add(fill);
 }
 
 function addShadowed(mesh) {
@@ -236,6 +337,7 @@ function buildFurniture(type, x, z, floorY, group, colliderBoxes) {
  * @param {{ wall:'south'|'north'|'east'|'west', width:number, height:number, offset:number, sill?:number, bottom?:number }} opts.door
  * @param {Array<{ wall:'south'|'north'|'east'|'west', width:number, height:number, offset:number, sill?:number }>} opts.windows
  * @param {Array<{ type:'table'|'chair'|'bookshelf', x:number, z:number }>} [opts.furniture]
+ * @param {number} [opts.ceilingLightCount] — hanging fixtures; auto from footprint if omitted
  */
 export function createBuilding(opts) {
   const {
@@ -249,6 +351,7 @@ export function createBuilding(opts) {
     door,
     windows = [],
     furniture = [],
+    ceilingLightCount = defaultCeilingLightCount(width, depth),
   } = opts;
 
   const root = new THREE.Group();
@@ -264,6 +367,7 @@ export function createBuilding(opts) {
   const linerGroup = new THREE.Group();
   const glassGroup = new THREE.Group();
   const furnitureGroup = new THREE.Group();
+  const lightsGroup = new THREE.Group();
   const localColliders = [];
 
   const byWall = { south: [], north: [], east: [], west: [] };
@@ -284,6 +388,9 @@ export function createBuilding(opts) {
   floor.position.set(0, floorHeight / 2, 0);
   linerGroup.add(floor);
 
+  const ceiling = buildInteriorCeiling(width, depth, t, wallH, linerGroup);
+  buildCeilingLights(halfW, halfD, ceiling.bottomY, ceilingLightCount, lightsGroup);
+
   const roof = addShadowed(
     new THREE.Mesh(
       new THREE.BoxGeometry(width, 0.22, depth),
@@ -302,6 +409,7 @@ export function createBuilding(opts) {
   root.add(linerGroup);
   root.add(glassGroup);
   root.add(furnitureGroup);
+  root.add(lightsGroup);
 
   const margin = 0.35;
   const worldBoxes = localColliders.map((box) => ({
@@ -325,17 +433,11 @@ export function createBuilding(opts) {
     return floorHeight;
   }
 
-  function updateRoof(cameraPos) {
-    roof.visible = !isInsideFootprint(cameraPos.x, cameraPos.z);
-  }
-
   return {
     group: root,
     id,
     colliders: { boxes: worldBoxes, circles: [] },
     getFloorY,
-    updateRoof,
-    roof,
     footprint: { halfW, halfD, position },
   };
 }

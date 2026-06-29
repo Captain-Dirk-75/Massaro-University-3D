@@ -299,9 +299,6 @@ async function bootstrap() {
       if (!interiorManager.isIndoor()) {
         animations.update(delta);
         areaGates.update(camera);
-        for (const building of unifiedBuildings) {
-          building.updateRoof(camera.position);
-        }
       }
 
       playerAvatar.syncToCamera(camera);
