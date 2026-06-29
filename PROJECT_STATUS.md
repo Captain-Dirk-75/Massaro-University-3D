@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-29 (unified-world Glass Pavilion Stage 1)
+**Last updated:** 2026-06-29 (Pavilion doorway collision + building scatter exclusion)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-29 — Fix createBuilding doorway colliders (floor-touching segments only); exclude building footprints from tree/rock/bush scatter
 - 2026-06-29 — Stage 1 unified-world Glass Pavilion: createBuilding() with real holes, alpha glass, walk-in
 - 2026-06-29 — Replace cubemap windows with reusable stylized glass (src/world/materials/glass.js)
 - 2026-06-29 — Shared cubemap windows with world-space parallax; glass entrance inside and out

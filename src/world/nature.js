@@ -4,6 +4,7 @@ import { seededRandom, hashSeed } from './procedural/random.js';
 import { foliageColor, trunkColor, applyVertexColor } from './procedural/colors.js';
 import { pickTreeProfile, sampleRange, TREE_PROFILES } from './procedural/treeProfiles.js';
 import { sampleGroundHeight, isStonePath } from './ground.js';
+import { isInsideBuildingFootprint } from './buildingFootprints.js';
 
 // ── Mood knobs ──
 export const FOLIAGE_SWAY_AMOUNT = 0.045;
@@ -31,8 +32,9 @@ const UP = new THREE.Vector3(0, 1, 0);
 const _tip = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
 
-function isExcluded(wx, wz) {
+function isExcluded(wx, wz, buildingZones) {
   if (isStonePath(wx, wz)) return true;
+  if (isInsideBuildingFootprint(wx, wz, buildingZones)) return true;
   if (wz < -10 && Math.abs(wx) < 18) return true;
   if (Math.hypot(wx, wz + 18) < 7) return true;
   return false;
@@ -394,7 +396,7 @@ function createBushInstances(bushDefs) {
   return { group, swayTargets };
 }
 
-function scatterTrees() {
+function scatterTrees(buildingZones) {
   const rand = seededRandom(42);
   const trees = [];
   const anchorSpots = [
@@ -408,7 +410,7 @@ function scatterTrees() {
   for (const [ax, az] of anchorSpots) {
     const x = ax + (rand() - 0.5) * 4.2;
     const z = az + (rand() - 0.5) * 4.2;
-    if (isExcluded(x, z)) continue;
+    if (isExcluded(x, z, buildingZones)) continue;
 
     trees.push({
       x,
@@ -425,7 +427,7 @@ function scatterTrees() {
   while (trees.length < TREE_COUNT_TARGET) {
     const x = (rand() - 0.5) * 58;
     const z = (rand() - 0.5) * 52;
-    if (isExcluded(x, z)) continue;
+    if (isExcluded(x, z, buildingZones)) continue;
 
     const tooClose = trees.some(
       (t) => Math.hypot(t.x - x, t.z - z) < 3.0,
@@ -447,14 +449,14 @@ function scatterTrees() {
   return trees;
 }
 
-function scatterBushes() {
+function scatterBushes(buildingZones) {
   const rand = seededRandom(200);
   const bushes = [];
 
   for (let i = 0; i < 32; i++) {
     const x = (rand() - 0.5) * 54;
     const z = (rand() - 0.5) * 48;
-    if (isExcluded(x, z)) continue;
+    if (isExcluded(x, z, buildingZones)) continue;
 
     bushes.push({
       x,
@@ -467,9 +469,9 @@ function scatterBushes() {
   return bushes;
 }
 
-export function createNature() {
-  const treeDefs = scatterTrees();
-  const bushes = scatterBushes();
+export function createNature({ buildingZones = [] } = {}) {
+  const treeDefs = scatterTrees(buildingZones);
+  const bushes = scatterBushes(buildingZones);
 
   const group = new THREE.Group();
   const swayTargets = [];

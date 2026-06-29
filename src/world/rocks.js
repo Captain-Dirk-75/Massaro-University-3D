@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { seededRandom, hashSeed } from './procedural/random.js';
 import { sampleGroundHeight, isStonePath } from './ground.js';
+import { isInsideBuildingFootprint } from './buildingFootprints.js';
 
 // ── Mood knobs ──
 export const ROCK_COUNT = 22;
@@ -30,14 +31,15 @@ function displaceRockGeometry(geometry, seed, strength) {
   return geometry;
 }
 
-function isRockExcluded(wx, wz) {
+function isRockExcluded(wx, wz, buildingZones) {
   if (isStonePath(wx, wz)) return true;
+  if (isInsideBuildingFootprint(wx, wz, buildingZones)) return true;
   if (Math.hypot(wx, wz + 18) < 6.5) return true;
   if (wz < -10 && Math.abs(wx) < 17) return true;
   return false;
 }
 
-export function createRocks() {
+export function createRocks({ buildingZones = [] } = {}) {
   const group = new THREE.Group();
   const colliders = [];
   const rand = seededRandom(7711);
@@ -52,7 +54,7 @@ export function createRocks() {
       wx = (rand() - 0.5) * 52;
       wz = (rand() - 0.5) * 48;
       attempts++;
-    } while (isRockExcluded(wx, wz) && attempts < 40);
+    } while (isRockExcluded(wx, wz, buildingZones) && attempts < 40);
 
     if (attempts >= 40) continue;
 

@@ -10,6 +10,7 @@ import { applyAtmosphere } from './world/atmosphere.js';
 import { createGround } from './world/ground.js';
 import { createLighting } from './world/lighting.js';
 import { createCampus } from './world/campusBuilder.js';
+import { getBuildingExclusionZones } from './world/buildingFootprints.js';
 import { createAreaGates } from './world/areaGates.js';
 import { createNature } from './world/nature.js';
 import { createRocks } from './world/rocks.js';
@@ -69,11 +70,16 @@ async function bootstrap() {
   const campus = createCampus();
   outdoorRoot.add(campus.root);
 
+  const buildingZones = getBuildingExclusionZones({
+    areas: campus.areas,
+    unifiedBuildings: campus.unifiedBuildings,
+  });
+
   const { group: nature, swayTargets, perches: treePerches, treeColliders } =
-    createNature();
+    createNature({ buildingZones });
   outdoorRoot.add(nature);
 
-  const rocks = createRocks();
+  const rocks = createRocks({ buildingZones });
   outdoorRoot.add(rocks.group);
 
   const worldColliders = createWorldColliders({

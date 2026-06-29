@@ -12,6 +12,13 @@ export const WOOD_COLOR = 0x8a7060;
 
 const GLASS_RENDER_ORDER = 2;
 
+/** Wall segments with bottom Y above this do not get walking colliders (door/window headers). */
+const FLOOR_COLLIDER_MAX_Y = 0.15;
+
+function segmentTouchesFloor(y1) {
+  return y1 <= FLOOR_COLLIDER_MAX_Y;
+}
+
 function shellMat() {
   return new THREE.MeshStandardMaterial({
     color: SHELL_COLOR,
@@ -103,12 +110,14 @@ function buildWallSegmentsAlongX(z, halfW, wallH, thickness, openings, shellGrou
     liner.position.set(cx, cy, z - inset);
     linerGroup.add(liner);
 
-    colliderBoxes.push({
-      minX: cx - w / 2,
-      maxX: cx + w / 2,
-      minZ: z - thickness / 2 - 0.05,
-      maxZ: z + thickness / 2 + 0.05,
-    });
+    if (segmentTouchesFloor(y1)) {
+      colliderBoxes.push({
+        minX: cx - w / 2,
+        maxX: cx + w / 2,
+        minZ: z - thickness / 2 - 0.05,
+        maxZ: z + thickness / 2 + 0.05,
+      });
+    }
   }
 
   function addGlass(rect) {
@@ -158,12 +167,14 @@ function buildWallSegmentsAlongZ(x, halfD, wallH, thickness, openings, shellGrou
     liner.position.set(x - inset, cy, cz);
     linerGroup.add(liner);
 
-    colliderBoxes.push({
-      minX: x - thickness / 2 - 0.05,
-      maxX: x + thickness / 2 + 0.05,
-      minZ: cz - d / 2,
-      maxZ: cz + d / 2,
-    });
+    if (segmentTouchesFloor(y1)) {
+      colliderBoxes.push({
+        minX: x - thickness / 2 - 0.05,
+        maxX: x + thickness / 2 + 0.05,
+        minZ: cz - d / 2,
+        maxZ: cz + d / 2,
+      });
+    }
   }
 
   function addGlass(rect) {
