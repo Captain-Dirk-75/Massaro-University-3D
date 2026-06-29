@@ -9,6 +9,7 @@ import {
   catalogItemFromContract,
   tierFromContract,
   campusAreaFromContract,
+  interiorFromContract,
   userFromContract,
   userToContract,
   entitlementsToCommerce,
@@ -22,6 +23,9 @@ import {
   findCatalogItemById,
   findTierById,
   findCampusAreaById,
+  getCachedInteriors,
+  findInteriorById,
+  findInteriorByBuildingId,
 } from './cache.js';
 
 const adapter = ACTIVE_ADAPTER === 'wordpress' ? wordpressAdapter : localAdapter;
@@ -34,6 +38,9 @@ export {
   findCatalogItemById,
   findTierById,
   findCampusAreaById,
+  getCachedInteriors,
+  findInteriorById,
+  findInteriorByBuildingId,
 };
 
 /**
@@ -41,11 +48,12 @@ export {
  * Call once at app startup before building the world or UI.
  */
 export async function bootstrapPlatform() {
-  const [tierContracts, itemContracts, areaContracts, contentTypes] =
+  const [tierContracts, itemContracts, areaContracts, interiorContracts, contentTypes] =
     await Promise.all([
       adapter.getMembershipTiers(),
       adapter.getCatalogItems(),
       adapter.getCampusAreas(),
+      adapter.getInteriors?.() ?? Promise.resolve([]),
       adapter.getContentTypes(),
     ]);
 
@@ -53,6 +61,7 @@ export async function bootstrapPlatform() {
     items: itemContracts.map(catalogItemFromContract),
     tiers: tierContracts.map(tierFromContract),
     areas: areaContracts.map(campusAreaFromContract),
+    interiorList: interiorContracts.map(interiorFromContract),
     types: contentTypes,
   });
 }

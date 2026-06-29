@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-29 — Walkable building interiors: data-driven scene swap, library furnished interior (E to enter/exit)
 - 2026-06-29 — Added first-person collision against trees, buildings, rocks, kiosk, guide, and campus bounds
 - 2026-06-29 — Fixed floating canopies (base alignment + trunk overlap); branch tip foliage clusters
 - 2026-06-29 — Fixed black screen: sampleRange() typo crashed bootstrap; geometry merge compatibility

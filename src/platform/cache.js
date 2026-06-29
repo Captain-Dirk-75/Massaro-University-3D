@@ -6,12 +6,14 @@
 let catalogItems = [];
 let tiers = [];
 let campusAreas = [];
+let interiors = [];
 let contentTypes = {};
 
-export function setPlatformCache({ items, tiers: tierList, areas, types }) {
+export function setPlatformCache({ items, tiers: tierList, areas, types, interiorList }) {
   catalogItems = items;
   tiers = tierList;
   campusAreas = areas;
+  interiors = interiorList ?? [];
   contentTypes = types;
 }
 
@@ -41,4 +43,16 @@ export function findTierById(id) {
 
 export function findCampusAreaById(id) {
   return campusAreas.find((area) => area.id === id) ?? null;
+}
+
+export function getCachedInteriors() {
+  return interiors;
+}
+
+export function findInteriorById(id) {
+  return interiors.find((interior) => interior.id === id) ?? null;
+}
+
+export function findInteriorByBuildingId(buildingId) {
+  return interiors.find((interior) => interior.buildingId === buildingId) ?? null;
 }

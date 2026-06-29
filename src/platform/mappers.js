@@ -137,6 +137,41 @@ export function entitlementsFromUserContract(contract) {
   };
 }
 
+export function interiorToContract(interior) {
+  return {
+    id: interior.id,
+    slug: interior.id,
+    type: 'massaro_interior',
+    status: 'publish',
+    title: { rendered: interior.name },
+    meta: {
+      building_id: interior.buildingId,
+      entrance: interior.entrance,
+      exit: interior.exit,
+      spawn: interior.spawn,
+      return_spawn: interior.returnSpawn,
+      room: interior.room,
+      build: interior.build,
+      furniture: interior.furniture ?? {},
+    },
+  };
+}
+
+export function interiorFromContract(contract) {
+  return {
+    id: contract.slug,
+    buildingId: contract.meta.building_id,
+    name: contract.title.rendered,
+    entrance: contract.meta.entrance,
+    exit: contract.meta.exit,
+    spawn: contract.meta.spawn,
+    returnSpawn: contract.meta.return_spawn,
+    room: contract.meta.room,
+    build: contract.meta.build,
+    furniture: contract.meta.furniture ?? {},
+  };
+}
+
 export function entitlementsToCommerce(entitlements) {
   return {
     ownedItemIds: [...entitlements.owned_item_slugs],

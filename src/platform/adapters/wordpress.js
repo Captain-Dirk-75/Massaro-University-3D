@@ -26,6 +26,11 @@ export async function getCampusAreas() {
   throw new Error('WordPress adapter is not implemented.');
 }
 
+export async function getInteriors() {
+  // TODO: GET /wp-json/wp/v2/massaro_interior?per_page=100
+  throw new Error('WordPress adapter is not implemented.');
+}
+
 export async function getCurrentUser() {
   // TODO: GET /wp-json/massaro/v1/me (authenticated session or JWT via proxy)
   throw new Error('WordPress adapter is not implemented.');

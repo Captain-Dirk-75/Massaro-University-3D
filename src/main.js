@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { createScene } from './core/scene.js';
 import { createRenderer, handleResize } from './core/renderer.js';
 import { createCamera } from './core/camera.js';
@@ -19,13 +20,15 @@ import { getCampusPerches } from './world/perches.js';
 import { createWorldAnimations } from './world/animations.js';
 import { createKiosk } from './world/kiosk.js';
 import { createGuideFigure } from './world/guideFigure.js';
+import { createInteriorManager } from './world/interiors/interiorManager.js';
 import { createPostProcessing } from './post/postProcessing.js';
+import { createFadeOverlay } from './ui/fadeOverlay.js';
 import { createHud } from './ui/hud.js';
 import { createCustomizePanel } from './ui/customizePanel.js';
 import { createStorePanel } from './ui/storePanel.js';
 import { createGuidePanel } from './ui/guidePanel.js';
 import { createPlayerAvatar } from './avatar/playerAvatar.js';
-import { bootstrapPlatform, getCurrentUser } from './platform/index.js';
+import { bootstrapPlatform, getCurrentUser, getCachedInteriors } from './platform/index.js';
 import {
   playerState,
   applyPlayerState,
@@ -49,24 +52,29 @@ async function bootstrap() {
   const user = await getCurrentUser();
   applyPlayerState(user);
 
-  const scene = createScene();
-  applyAtmosphere(scene);
+  const outdoorScene = createScene();
+  applyAtmosphere(outdoorScene);
+
+  const indoorScene = createScene();
+
+  const outdoorRoot = new THREE.Group();
+  outdoorScene.add(outdoorRoot);
 
   const renderer = createRenderer(canvas);
   const camera = createCamera();
 
-  scene.add(createLighting());
-  scene.add(createGround());
+  outdoorRoot.add(createLighting());
+  outdoorRoot.add(createGround());
 
   const campus = createCampus();
-  scene.add(campus.root);
+  outdoorRoot.add(campus.root);
 
   const { group: nature, swayTargets, perches: treePerches, treeColliders } =
     createNature();
-  scene.add(nature);
+  outdoorRoot.add(nature);
 
   const rocks = createRocks();
-  scene.add(rocks.group);
+  outdoorRoot.add(rocks.group);
 
   const worldColliders = createWorldColliders({
     treeColliders,
@@ -74,22 +82,22 @@ async function bootstrap() {
   });
 
   const { group: cloudGroup, clouds } = createClouds();
-  scene.add(cloudGroup);
+  outdoorRoot.add(cloudGroup);
 
   const birdPerches = [...treePerches, ...getCampusPerches()];
   const { group: birdGroup, birds } = createBirds(birdPerches);
-  scene.add(birdGroup);
+  outdoorRoot.add(birdGroup);
 
   const motes = createMotes();
-  scene.add(motes.points);
+  outdoorRoot.add(motes.points);
 
   const kiosk = createKiosk();
-  scene.add(kiosk.group);
+  outdoorRoot.add(kiosk.group);
 
   const guide = createGuideFigure();
-  scene.add(guide.group);
+  outdoorRoot.add(guide.group);
 
-  const playerAvatar = createPlayerAvatar(scene);
+  const playerAvatar = createPlayerAvatar(outdoorScene);
   playerAvatar.updateFromProfile(playerState.profile);
 
   const animations = createWorldAnimations({
@@ -101,11 +109,9 @@ async function bootstrap() {
     birdPerches,
   });
 
-  const { composer, setSize: setComposerSize } = createPostProcessing(
-    renderer,
-    scene,
-    camera,
-  );
+  const outdoorComposer = createPostProcessing(renderer, outdoorScene, camera);
+  const indoorComposer = createPostProcessing(renderer, indoorScene, camera);
+  const fade = createFadeOverlay();
 
   let customizePanel;
   let storePanel;
@@ -122,7 +128,7 @@ async function bootstrap() {
     getState: () => playerState,
     onGateMessage: (message) => hud.setGateMessage(message),
   });
-  scene.add(areaGates.root);
+  outdoorRoot.add(areaGates.root);
 
   function applyProfileToUi(profile) {
     hud.setPlayerProfile(profile);
@@ -156,19 +162,6 @@ async function bootstrap() {
 
   applyProfileToUi(playerState.profile);
 
-  const interaction = createInteractionSystem({
-    camera,
-    getTargets: () => [kiosk, guide],
-    onInteract(target) {
-      if (target.id === 'sage-grove') {
-        guidePanel.open();
-      } else if (target.id === 'course-sanctuary') {
-        storePanel.open();
-      }
-    },
-    isBlocked: isUiBlocking,
-  });
-
   const controls = createFirstPersonControls(camera, canvas, {
     colliders: worldColliders,
     onLockChange(locked) {
@@ -176,6 +169,53 @@ async function bootstrap() {
       canvas.classList.toggle('is-locked', locked);
       hud.setPointerLocked(locked);
     },
+  });
+
+  const interiors = getCachedInteriors();
+  const interiorManager = createInteriorManager({
+    outdoorScene,
+    indoorScene,
+    outdoorRoot,
+    camera,
+    outdoorComposer: outdoorComposer.composer,
+    indoorComposer: indoorComposer.composer,
+    fade,
+    playerAvatar,
+    controls,
+    outdoorColliders: worldColliders,
+    interiors,
+  });
+
+  const entranceTargets = interiorManager.createEntranceTargets();
+
+  function getInteractionTargets() {
+    if (interiorManager.isIndoor()) {
+      const exit = interiorManager.getExitTarget();
+      return exit ? [exit] : [];
+    }
+    return [kiosk, guide, ...entranceTargets];
+  }
+
+  const interaction = createInteractionSystem({
+    camera,
+    getTargets: getInteractionTargets,
+    onInteract(target) {
+      if (target.type === 'entrance') {
+        const def = interiorManager.findInterior(target.interiorId);
+        if (def) void interiorManager.enter(def);
+        return;
+      }
+      if (target.type === 'exit') {
+        void interiorManager.exit();
+        return;
+      }
+      if (target.id === 'sage-grove') {
+        guidePanel.open();
+      } else if (target.id === 'course-sanctuary') {
+        storePanel.open();
+      }
+    },
+    isBlocked: () => isUiBlocking() || interiorManager.isTransitioning(),
   });
 
   canvas.addEventListener(
@@ -190,7 +230,8 @@ async function bootstrap() {
 
   window.addEventListener('resize', () => {
     handleResize(renderer, camera);
-    setComposerSize(window.innerWidth, window.innerHeight);
+    outdoorComposer.setSize(window.innerWidth, window.innerHeight);
+    indoorComposer.setSize(window.innerWidth, window.innerHeight);
   });
 
   let sessionSaveTimer = 0;
@@ -201,22 +242,24 @@ async function bootstrap() {
 
   createRenderLoop({
     renderer,
-    scene,
+    scene: outdoorScene,
     camera,
-    render: () => composer.render(),
+    render: () => interiorManager.render(),
     onUpdate(delta) {
-      if (!isUiBlocking()) {
+      if (!isUiBlocking() && !interiorManager.isTransitioning()) {
         controls.update(delta);
       }
 
-      animations.update(delta);
+      if (!interiorManager.isIndoor()) {
+        animations.update(delta);
+        areaGates.update(camera);
+      }
 
       playerAvatar.syncToCamera(camera);
       addCampusTime(delta);
 
       const nearTarget = interaction.update();
       hud.setInteractPrompt(nearTarget);
-      areaGates.update(camera);
 
       sessionSaveTimer += delta;
       if (sessionSaveTimer >= 30) {

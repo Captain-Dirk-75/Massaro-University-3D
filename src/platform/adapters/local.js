@@ -4,12 +4,14 @@
  */
 import { ITEMS, TIERS, CONTENT_TYPES } from '../../content/catalog.js';
 import { CAMPUS_AREAS } from '../../content/campus.js';
+import { INTERIORS } from '../../content/interiors.js';
 import { DEFAULT_PLAYER_STATE } from '../../state/defaults.js';
 import { load, save, clear } from '../../state/persistence.js';
 import {
   catalogItemToContract,
   tierToContract,
   campusAreaToContract,
+  interiorToContract,
   userToContract,
   userFromContract,
   entitlementsFromUserContract,
@@ -29,6 +31,10 @@ export async function getContentTypes() {
 
 export async function getCampusAreas() {
   return CAMPUS_AREAS.map(campusAreaToContract);
+}
+
+export async function getInteriors() {
+  return INTERIORS.map(interiorToContract);
 }
 
 export async function getCurrentUser() {

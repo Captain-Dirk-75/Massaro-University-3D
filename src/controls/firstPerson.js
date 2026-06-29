@@ -10,6 +10,7 @@ export function createFirstPersonControls(camera, canvas, { onLockChange, collid
   const keys = new Set();
   let yaw = 0;
   let pitch = 0;
+  let activeColliders = colliders ?? null;
 
   const forward = new THREE.Vector3();
   const right = new THREE.Vector3();
@@ -65,11 +66,19 @@ export function createFirstPersonControls(camera, canvas, { onLockChange, collid
 
     if (move.lengthSq() > 0) {
       move.normalize().multiplyScalar(MOVE_SPEED * delta);
-      applyCollisionMovement(camera, move, colliders);
+      applyCollisionMovement(camera, move, activeColliders);
     }
 
     camera.position.y = PLAYER_HEIGHT;
   }
 
-  return { update };
+  function setColliders(next) {
+    activeColliders = next ?? null;
+  }
+
+  function setYaw(angle) {
+    yaw = angle;
+  }
+
+  return { update, setColliders, setYaw };
 }
