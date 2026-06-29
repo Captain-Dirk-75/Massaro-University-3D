@@ -1,8 +1,81 @@
 import { FOLIAGE_SWAY_SPEED } from './nature.js';
 import { RIPPLE_SPEED } from './waterFeature.js';
 import { MOTE_ORBIT_SPEED } from './motes.js';
+import { CLOUD_DRIFT_SPEED } from './clouds.js';
+import { BIRD_WING_FLAP_SPEED } from './birds.js';
 
-export function createWorldAnimations({ swayTargets, waterMaterial, motes }) {
+function updateBirds(birds, perches, elapsed, delta) {
+  for (const bird of birds) {
+    const { mesh } = bird;
+    const wingL = mesh.getObjectByName('wingL');
+    const wingR = mesh.getObjectByName('wingR');
+
+    if (bird.mode === 'perch') {
+      bird.perchTimer -= delta;
+      const perch = perches[bird.perchIndex];
+      mesh.position.set(perch.x, perch.y + 0.12 + Math.sin(elapsed * 2 + bird.phase) * 0.03, perch.z);
+      mesh.rotation.y += delta * 0.15;
+
+      if (wingL && wingR) {
+        wingL.rotation.z = 0.15;
+        wingR.rotation.z = -0.15;
+      }
+
+      if (bird.perchTimer <= 0) {
+        bird.mode = 'fly';
+        bird.progress = 0;
+        let next = bird.perchIndex;
+        for (let attempt = 0; attempt < 6 && next === bird.perchIndex; attempt++) {
+          next = Math.floor(Math.random() * perches.length);
+        }
+        bird.targetIndex = next;
+      }
+      continue;
+    }
+
+    const from = perches[bird.perchIndex];
+    const to = perches[bird.targetIndex];
+    bird.progress += delta * bird.speed * 0.12;
+
+    if (bird.progress >= 1) {
+      bird.mode = 'perch';
+      bird.perchIndex = bird.targetIndex;
+      bird.perchTimer = 2 + Math.random() * 5;
+      bird.targetIndex = (bird.targetIndex + 1 + Math.floor(Math.random() * (perches.length - 1))) % perches.length;
+      mesh.position.set(to.x, to.y + 0.12, to.z);
+      continue;
+    }
+
+    const t = bird.progress;
+    const arc = Math.sin(t * Math.PI) * bird.flightHeight;
+    mesh.position.set(
+      from.x + (to.x - from.x) * t,
+      from.y + (to.y - from.y) * t + arc,
+      from.z + (to.z - from.z) * t,
+    );
+
+    mesh.lookAt(
+      from.x + (to.x - from.x) * Math.min(t + 0.05, 1),
+      from.y + (to.y - from.y) * Math.min(t + 0.05, 1) + arc,
+      from.z + (to.z - from.z) * Math.min(t + 0.05, 1),
+    );
+
+    const flap = Math.sin(elapsed * BIRD_WING_FLAP_SPEED + bird.phase) * 0.55;
+    if (wingL && wingR) {
+      wingL.rotation.z = 0.55 + flap;
+      wingR.rotation.z = -0.55 - flap;
+    }
+  }
+}
+
+export function createWorldAnimations({
+  swayTargets,
+  waterMaterial,
+  motes,
+  clouds,
+  birds,
+  birdPerches,
+}) {
   let elapsed = 0;
 
   function update(delta) {
@@ -37,6 +110,21 @@ export function createWorldAnimations({ swayTargets, waterMaterial, motes }) {
         positions[i3 + 2] = s.oz + Math.cos(t * 0.8 + s.phase) * s.radius * 0.85;
       }
       points.geometry.attributes.position.needsUpdate = true;
+    }
+
+    if (clouds) {
+      for (const cloud of clouds) {
+        const drift = Math.sin(elapsed * cloud.speed * CLOUD_DRIFT_SPEED + cloud.phase) * 6;
+        if (cloud.driftAxis === 'x') {
+          cloud.mesh.position.x = cloud.baseX + drift;
+        } else {
+          cloud.mesh.position.z = cloud.baseZ + drift;
+        }
+      }
+    }
+
+    if (birds && birdPerches?.length) {
+      updateBirds(birds, birdPerches, elapsed, delta);
     }
   }
 

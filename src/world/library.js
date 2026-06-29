@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createBrickMaterial } from './procedural/brickMaterial.js';
 
 // ── Mood knobs ──
 export const STONE_COLOR = 0xe0d6c8;
@@ -6,6 +7,8 @@ export const STONE_DARK = 0xb8a898;
 export const WINDOW_GLOW = 0xffe8c0;
 export const WINDOW_GLOW_INTENSITY = 0.62;
 export const ROOF_OVERHANG = 1.4;
+
+const brickMat = () => createBrickMaterial(STONE_COLOR, STONE_DARK);
 
 const stoneMat = () =>
   new THREE.MeshStandardMaterial({
@@ -67,7 +70,7 @@ function createLatheColumn(height, radius) {
   return col;
 }
 
-function createExtrudedBlock(width, depth, height, bevel = 0.18) {
+function createExtrudedBlock(width, depth, height, bevel = 0.18, material = brickMat()) {
   const hw = width / 2;
   const hd = depth / 2;
   const shape = new THREE.Shape();
@@ -91,7 +94,7 @@ function createExtrudedBlock(width, depth, height, bevel = 0.18) {
   });
   geo.rotateX(-Math.PI / 2);
 
-  return addShadowed(new THREE.Mesh(geo, stoneMat()));
+  return addShadowed(new THREE.Mesh(geo, material));
 }
 
 function createArchedWindow(width, height) {
@@ -234,7 +237,7 @@ export function buildLibrary(area) {
   const entablature = addShadowed(
     new THREE.Mesh(
       new THREE.BoxGeometry(facadeWidth - 0.8, 0.55, porticoDepth + 0.5),
-      stoneMat(),
+      brickMat(),
     ),
   );
   entablature.position.set(0, 7.9, porticoDepth / 2 - 0.25);

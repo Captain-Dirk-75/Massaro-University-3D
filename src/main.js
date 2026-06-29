@@ -12,6 +12,9 @@ import { createAreaGates } from './world/areaGates.js';
 import { createNature } from './world/nature.js';
 import { createRocks } from './world/rocks.js';
 import { createMotes } from './world/motes.js';
+import { createClouds } from './world/clouds.js';
+import { createBirds } from './world/birds.js';
+import { getCampusPerches } from './world/perches.js';
 import { createWorldAnimations } from './world/animations.js';
 import { createKiosk } from './world/kiosk.js';
 import { createGuideFigure } from './world/guideFigure.js';
@@ -57,10 +60,17 @@ async function bootstrap() {
   const campus = createCampus();
   scene.add(campus.root);
 
-  const { group: nature, swayTargets } = createNature();
+  const { group: nature, swayTargets, perches: treePerches } = createNature();
   scene.add(nature);
 
   scene.add(createRocks());
+
+  const { group: cloudGroup, clouds } = createClouds();
+  scene.add(cloudGroup);
+
+  const birdPerches = [...treePerches, ...getCampusPerches()];
+  const { group: birdGroup, birds } = createBirds(birdPerches);
+  scene.add(birdGroup);
 
   const motes = createMotes();
   scene.add(motes.points);
@@ -78,6 +88,9 @@ async function bootstrap() {
     swayTargets,
     waterMaterial: campus.waterMaterial,
     motes,
+    clouds,
+    birds,
+    birdPerches,
   });
 
   const { composer, setSize: setComposerSize } = createPostProcessing(

@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-29 — ~50% detail pass: tree branches/leaves, brick walls, clouds, birds; fixed bare trunks (per-tree crown groups)
 - 2026-06-29 — Fixed stationary air motes: world animations now run each frame; motes orbit gently
 - 2026-06-29 — Fixed floating tree canopies (trunk base on ground, canopy meets trunk top)
 - 2026-06-29 — Procedural campus visuals: instanced trees, extruded architecture, noise ground, rocks, tuned lighting/fog/bloom
