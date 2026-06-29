@@ -48,6 +48,12 @@ export function createCustomizePanel({ onChange, onOpenChange }) {
 
       <p class="customize-panel__session" id="session-time"></p>
 
+      <p class="customize-panel__status customize-panel__status--hidden" id="profile-status"></p>
+
+      <button type="button" class="customize-panel__save" id="save-profile">
+        Save profile
+      </button>
+
       <button type="button" class="customize-panel__reset" id="reset-profile">
         Reset profile
       </button>
@@ -192,7 +198,44 @@ export function createCustomizePanel({ onChange, onOpenChange }) {
     .customize-panel__session {
       font-size: 0.8rem;
       color: #989088;
-      margin: 0.5rem 0 1rem;
+      margin: 0.5rem 0 0.75rem;
+    }
+
+    .customize-panel__status {
+      font-size: 0.8rem;
+      text-align: center;
+      margin-bottom: 0.65rem;
+      color: #b8e8c0;
+    }
+
+    .customize-panel__status--hidden {
+      display: none;
+    }
+
+    .customize-panel__status--dirty {
+      color: #e8dcc0;
+    }
+
+    .customize-panel__save {
+      width: 100%;
+      padding: 0.6rem;
+      margin-bottom: 0.5rem;
+      border: 1px solid rgba(196, 168, 106, 0.45);
+      border-radius: 6px;
+      background: rgba(196, 168, 106, 0.22);
+      color: #fff8ee;
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .customize-panel__save:hover {
+      background: rgba(196, 168, 106, 0.32);
+    }
+
+    .customize-panel__save:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .customize-panel__reset {
@@ -214,10 +257,15 @@ export function createCustomizePanel({ onChange, onOpenChange }) {
   const bodyOptions = panel.querySelector('#body-options');
   const colorOptions = panel.querySelector('#color-options');
   const sessionTime = panel.querySelector('#session-time');
+  const statusEl = panel.querySelector('#profile-status');
+  const saveBtn = panel.querySelector('#save-profile');
   const previewCanvas = panel.querySelector('#avatar-preview');
   const preview = createAvatarPreview(previewCanvas);
 
   let isOpen = false;
+  let draftProfile = { ...playerState.profile };
+  let isDirty = false;
+  let isSaving = false;
 
   for (const id of BODY_PRESET_IDS) {
     const btn = document.createElement('button');
@@ -238,8 +286,28 @@ export function createCustomizePanel({ onChange, onOpenChange }) {
     colorOptions.appendChild(btn);
   }
 
-  function syncFormFromState() {
-    const { displayName, bodyPreset, colorId } = playerState.profile;
+  function profilesMatch(a, b) {
+    return (
+      a.displayName === b.displayName &&
+      a.bodyPreset === b.bodyPreset &&
+      a.colorId === b.colorId
+    );
+  }
+
+  function setStatus(message, tone = 'saved') {
+    if (!message) {
+      statusEl.classList.add('customize-panel__status--hidden');
+      statusEl.classList.remove('customize-panel__status--dirty');
+      statusEl.textContent = '';
+      return;
+    }
+    statusEl.textContent = message;
+    statusEl.classList.remove('customize-panel__status--hidden');
+    statusEl.classList.toggle('customize-panel__status--dirty', tone === 'dirty');
+  }
+
+  function syncFormFromDraft() {
+    const { displayName, bodyPreset, colorId } = draftProfile;
     nameInput.value = displayName;
 
     bodyOptions.querySelectorAll('.customize-panel__option').forEach((btn) => {
@@ -260,9 +328,22 @@ export function createCustomizePanel({ onChange, onOpenChange }) {
       playerState.session.totalTimeOnCampus,
     );
     preview.update({ bodyPreset, colorId });
+    isDirty = !profilesMatch(draftProfile, playerState.profile);
+    saveBtn.disabled = isSaving || !isDirty;
+    setStatus(
+      isDirty ? 'Unsaved changes' : isSaving ? 'Saving…' : null,
+      isDirty ? 'dirty' : 'saved',
+    );
   }
 
-  function emitChange() {
+  function applyDraftToPreview() {
+    onChange?.(draftProfile);
+    syncFormFromDraft();
+  }
+
+  function resetDraftFromSaved() {
+    draftProfile = { ...playerState.profile };
+    syncFormFromDraft();
     onChange?.(playerState.profile);
   }
 
@@ -275,8 +356,11 @@ export function createCustomizePanel({ onChange, onOpenChange }) {
       if (document.pointerLockElement) {
         document.exitPointerLock();
       }
-      syncFormFromState();
+      draftProfile = { ...playerState.profile };
+      syncFormFromDraft();
       preview.resize();
+    } else if (isDirty) {
+      resetDraftFromSaved();
     }
   }
 
@@ -285,25 +369,45 @@ export function createCustomizePanel({ onChange, onOpenChange }) {
   }
 
   nameInput.addEventListener('input', () => {
-    const name = nameInput.value.trim() || 'Visitor';
-    updateProfile({ displayName: name });
-    emitChange();
+    draftProfile.displayName = nameInput.value.trim() || 'Visitor';
+    applyDraftToPreview();
   });
 
   bodyOptions.addEventListener('click', (event) => {
     const btn = event.target.closest('[data-preset]');
     if (!btn) return;
-    updateProfile({ bodyPreset: btn.dataset.preset });
-    syncFormFromState();
-    emitChange();
+    draftProfile.bodyPreset = btn.dataset.preset;
+    applyDraftToPreview();
   });
 
   colorOptions.addEventListener('click', (event) => {
-    const btn = event.target.closest('[data-colorId]');
+    const btn = event.target.closest('[data-color-id]');
     if (!btn) return;
-    updateProfile({ colorId: btn.dataset.colorId });
-    syncFormFromState();
-    emitChange();
+    draftProfile.colorId = btn.dataset.colorId;
+    applyDraftToPreview();
+  });
+
+  saveBtn.addEventListener('click', async () => {
+    if (!isDirty || isSaving) return;
+
+    isSaving = true;
+    saveBtn.disabled = true;
+    setStatus('Saving…');
+
+    try {
+      await updateProfile({ ...draftProfile });
+      isDirty = false;
+      setStatus('Profile saved');
+      onChange?.(playerState.profile);
+      setTimeout(() => {
+        if (!isDirty) setStatus(null);
+      }, 2000);
+    } catch {
+      setStatus('Could not save — try again', 'dirty');
+    } finally {
+      isSaving = false;
+      syncFormFromDraft();
+    }
   });
 
   panel.querySelector('.customize-panel__close').addEventListener('click', () => {
@@ -312,8 +416,11 @@ export function createCustomizePanel({ onChange, onOpenChange }) {
 
   panel.querySelector('#reset-profile').addEventListener('click', async () => {
     await resetToDefaults();
-    syncFormFromState();
-    emitChange();
+    draftProfile = { ...playerState.profile };
+    syncFormFromDraft();
+    onChange?.(playerState.profile);
+    setStatus('Profile reset to defaults');
+    setTimeout(() => setStatus(null), 2000);
   });
 
   document.addEventListener('keydown', (event) => {
@@ -333,7 +440,7 @@ export function createCustomizePanel({ onChange, onOpenChange }) {
     close: () => setOpen(false),
     toggle,
     isOpen: () => isOpen,
-    syncFormFromState,
+    syncFormFromState: syncFormFromDraft,
     updateSessionDisplay() {
       sessionTime.textContent = formatCampusTime(
         playerState.session.totalTimeOnCampus,
