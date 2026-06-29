@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-29 (createBuilding interior ceiling + hanging lights)
+**Last updated:** 2026-06-29 (Stage 2a unified Gothic library)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-29 — Stage 2a: unified-world Gothic library via createCompoundBuilding (multi-room, 2 floors, stairs, member-gated archive); library unhooked from scene-swap
 - 2026-06-29 — createBuilding interior ceiling + library-style hanging lights; roof stays visible (no hide-on-enter)
 - 2026-06-29 — Fix createBuilding doorway colliders (floor-touching segments only); exclude building footprints from tree/rock/bush scatter
 - 2026-06-29 — Stage 1 unified-world Glass Pavilion: createBuilding() with real holes, alpha glass, walk-in

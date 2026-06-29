@@ -26,7 +26,7 @@ export const CAMPUS_AREAS = [
     position: { x: 0, y: 0, z: -34 },
     footprint: { width: 32, depth: 14 },
     access: 'open',
-    build: 'library',
+    build: 'unified-library',
     entrance: 'south',
   },
   {

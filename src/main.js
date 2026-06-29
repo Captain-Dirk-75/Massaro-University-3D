@@ -11,6 +11,7 @@ import { createGround } from './world/ground.js';
 import { createLighting } from './world/lighting.js';
 import { createCampus } from './world/campusBuilder.js';
 import { getBuildingExclusionZones } from './world/buildingFootprints.js';
+import { createSectionGates } from './world/buildings/sectionGates.js';
 import { createAreaGates } from './world/areaGates.js';
 import { createNature } from './world/nature.js';
 import { createRocks } from './world/rocks.js';
@@ -141,6 +142,13 @@ async function bootstrap() {
   });
   outdoorRoot.add(areaGates.root);
 
+  const sectionGates = createSectionGates({
+    gates: unifiedBuildings.flatMap((b) => b.sectionGates ?? []),
+    getState: () => playerState,
+    onGateMessage: (message) => hud.setGateMessage(message),
+  });
+  outdoorRoot.add(sectionGates.root);
+
   function applyProfileToUi(profile) {
     hud.setPlayerProfile(profile);
     playerAvatar.updateFromProfile(profile);
@@ -159,6 +167,7 @@ async function bootstrap() {
     },
     onCommerceChange() {
       areaGates.refresh();
+      sectionGates.refresh();
       if (storePanel.isOpen()) {
         storePanel.refresh();
       }
@@ -299,6 +308,7 @@ async function bootstrap() {
       if (!interiorManager.isIndoor()) {
         animations.update(delta);
         areaGates.update(camera);
+        sectionGates.update(camera);
       }
 
       playerAvatar.syncToCamera(camera);

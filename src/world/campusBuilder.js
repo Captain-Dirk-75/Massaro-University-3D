@@ -1,13 +1,16 @@
 import * as THREE from 'three';
 import { getCachedCampusAreas } from '../platform/index.js';
-import { buildLibrary } from './library.js';
 import { buildWaterFeature } from './waterFeature.js';
 import { buildPatronGarden } from './builders/patronGarden.js';
 import { buildStillnessPavilion } from './builders/stillnessPavilion.js';
-import { createBuilding, createPavilionOpts } from './buildings/index.js';
+import {
+  createBuilding,
+  createCompoundBuilding,
+  createPavilionOpts,
+  createLibraryOpts,
+} from './buildings/index.js';
 
 const BUILDERS = {
-  library: buildLibrary,
   'water-feature': buildWaterFeature,
   'patron-garden': buildPatronGarden,
   'stillness-pavilion': buildStillnessPavilion,
@@ -31,6 +34,13 @@ export function createCampus() {
 
     if (area.build === 'unified-pavilion') {
       const building = createBuilding(createPavilionOpts(area));
+      root.add(building.group);
+      unifiedBuildings.push(building);
+      continue;
+    }
+
+    if (area.build === 'unified-library') {
+      const building = createCompoundBuilding(createLibraryOpts(area));
       root.add(building.group);
       unifiedBuildings.push(building);
       continue;

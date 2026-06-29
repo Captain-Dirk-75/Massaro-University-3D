@@ -428,7 +428,7 @@ export function createBuilding(opts) {
     );
   }
 
-  function getFloorY(wx, wz) {
+  function getFloorY(wx, wz, _currentY) {
     if (!isInsideFootprint(wx, wz)) return null;
     return floorHeight;
   }

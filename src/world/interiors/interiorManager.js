@@ -4,6 +4,7 @@ import { applyInteriorAtmosphere } from './interiorAtmosphere.js';
 
 /**
  * Manages outdoor ↔ indoor scene swaps with fade transitions.
+ * TODO: Remove this scene-swap system once nothing references it (library now unified-world).
  */
 export function createInteriorManager({
   outdoorScene,
