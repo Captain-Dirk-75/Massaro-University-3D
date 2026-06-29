@@ -1,7 +1,13 @@
 /**
  * Collegiate Gothic library — Stage 2a structure config.
- * Tunable layout, aesthetic, and gated-section rules.
+ * Tunable layout, aesthetic, gated-section rules, and classical facade.
+ *
+ * Campus position lives in src/content/campus.js (library entry) — keep in sync:
+ *   { x: 0, y: 0, z: -48 }
  */
+
+// ── Campus placement (mirror of campus.js — update both together) ──
+export const LIBRARY_CAMPUS_POSITION = { x: 0, y: 0, z: -48 };
 
 // ── Building shell ──
 export const LIBRARY_WIDTH = 32;
@@ -13,7 +19,9 @@ export const LIBRARY_FLOOR_HEIGHT = 0.14;
 
 // ── Collegiate Gothic palette (dark timber, stone, warm glow) ──
 export const LIBRARY_PALETTE = {
-  shell: 0xb8b0a4,
+  shell: 0xd8d0c4,
+  facadeStone: 0xe0d6c8,
+  facadeDark: 0xb8a898,
   liner: 0x5a4838,
   floor: 0x4a3828,
   timber: 0x3a2c20,
@@ -21,6 +29,24 @@ export const LIBRARY_PALETTE = {
   emissive: 0xffe8c8,
   emissiveIntensity: 0.14,
   roof: 0x6a5a4a,
+};
+
+// ── Classical entrance facade (see classicalFacade.js) ──
+export const LIBRARY_FACADE = {
+  wall: 'south',
+  bayWidth: 14,
+  bayProjection: 2.8,
+  columnCount: 6,
+  columnRadius: 0.32,
+  columnHeight: 6.8,
+  pedimentHeight: 1.6,
+  entablatureHeight: 0.5,
+  stepCount: 4,
+  stepDepth: 0.55,
+  stepRise: 0.18,
+  corniceHeight: 0.3,
+  roofOverhang: 1.4,
+  wingSetback: 5.5,
 };
 
 // ── Ceiling beams (heavy timber, vaulted feel) ──
@@ -55,6 +81,7 @@ export function createLibraryOpts(area) {
     floorHeight: LIBRARY_FLOOR_HEIGHT,
     palette: LIBRARY_PALETTE,
     ceilingBeams: LIBRARY_CEILING_BEAMS,
+    facade: LIBRARY_FACADE,
 
     exteriorDoors: [
       {

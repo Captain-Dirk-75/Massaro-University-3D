@@ -8,10 +8,10 @@ import {
   buildWallSegmentsAlongX,
   buildWallSegmentsAlongZ,
   createPalette,
-  floorMat,
   shellMat,
   woodMat,
 } from './buildingPrimitives.js';
+import { buildClassicalFacade } from './classicalFacade.js';
 
 export const DEFAULT_STORY_HEIGHT = 4.0;
 export const DEFAULT_FLOOR_HEIGHT = 0.14;
@@ -113,6 +113,7 @@ export function createCompoundBuilding(opts) {
     rooms = [],
     furniture = [],
     ceilingBeams = 0,
+    facade = null,
   } = opts;
 
   const palette = createPalette(paletteOverrides);
@@ -193,13 +194,26 @@ export function createCompoundBuilding(opts) {
   roof.position.set(0, totalHeight + 0.14, 0);
   shellGroup.add(roof);
 
-  const portico = exteriorDoors.find((d) => d.wall === 'south');
-  if (portico) {
-    const porticoRoof = addShadowed(
-      new THREE.Mesh(new THREE.BoxGeometry(portico.width + 2.4, 0.12, 1.8), shellMat(palette)),
-    );
-    porticoRoof.position.set(portico.offset, storyHeight * 0.55, halfD + 0.7);
-    shellGroup.add(porticoRoof);
+  if (facade) {
+    buildClassicalFacade({
+      wall: facade.wall ?? 'south',
+      halfW,
+      halfD,
+      totalHeight,
+      storyHeight,
+      palette,
+      shellGroup,
+      config: facade,
+    });
+  } else {
+    const portico = exteriorDoors.find((d) => d.wall === 'south');
+    if (portico) {
+      const porticoRoof = addShadowed(
+        new THREE.Mesh(new THREE.BoxGeometry(portico.width + 2.4, 0.12, 1.8), shellMat(palette)),
+      );
+      porticoRoof.position.set(portico.offset, storyHeight * 0.55, halfD + 0.7);
+      shellGroup.add(porticoRoof);
+    }
   }
 
   for (const piece of furniture) {

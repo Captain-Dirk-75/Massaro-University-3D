@@ -43,9 +43,10 @@ export function isStonePath(wx, wz) {
   const crossPath = Math.abs(wz) < 2.8 && Math.abs(wx) < 18;
   const poolRing =
     Math.hypot(wx, wz + 18) > 5.5 && Math.hypot(wx, wz + 18) < 8.5;
-  const libraryPlaza = wz < -12 && wz > -28 && Math.abs(wx) < 16;
+  const libraryPlaza = wz < -12 && wz > -42 && Math.abs(wx) < 18;
+  const libraryApproach = Math.abs(wx) < 4 && wz > -44 && wz < -12;
 
-  if (mainPath || crossPath || poolRing || libraryPlaza) return true;
+  if (mainPath || crossPath || poolRing || libraryPlaza || libraryApproach) return true;
 
   const half = GROUND_SIZE / 2;
   const u = (wx + half) / GROUND_SIZE;
