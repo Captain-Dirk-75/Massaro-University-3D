@@ -24,6 +24,7 @@ export function createHud({ onCustomizeClick, onSanctuaryClick, onGuideClick } =
     <p class="hud-gate hud-gate--hidden" id="hud-gate"></p>
     <p class="hud-hint" data-hint="start">Click to enter · WASD to move · Mouse to look · C to customize</p>
     <p class="hud-hint hud-hint--hidden" data-hint="active">WASD to move · Mouse to look · Esc to release · C to customize</p>
+    <p class="hud-perf" id="hud-perf"></p>
   `;
 
   const style = document.createElement('style');
@@ -137,6 +138,16 @@ export function createHud({ onCustomizeClick, onSanctuaryClick, onGuideClick } =
     .hud-hint--hidden {
       display: none;
     }
+
+    .hud-perf {
+      position: absolute;
+      bottom: 1rem;
+      left: 1.5rem;
+      font-size: 0.72rem;
+      font-family: ui-monospace, monospace;
+      opacity: 0.65;
+      letter-spacing: 0.02em;
+    }
   `;
 
   document.head.appendChild(style);
@@ -151,6 +162,7 @@ export function createHud({ onCustomizeClick, onSanctuaryClick, onGuideClick } =
   const guideBtn = overlay.querySelector('#hud-guide-btn');
   const interactEl = overlay.querySelector('#hud-interact');
   const gateEl = overlay.querySelector('#hud-gate');
+  const perfEl = overlay.querySelector('#hud-perf');
 
   guideBtn.addEventListener('click', () => {
     onGuideClick?.();
@@ -195,5 +207,15 @@ export function createHud({ onCustomizeClick, onSanctuaryClick, onGuideClick } =
     gateEl.classList.remove('hud-gate--hidden');
   }
 
-  return { setPointerLocked, setPlayerProfile, setInteractPrompt, setGateMessage };
+  function setPerfStats({ fps, drawCalls, triangles }) {
+    perfEl.textContent = `FPS ${fps} · draws ${drawCalls} · tris ${triangles}`;
+  }
+
+  return {
+    setPointerLocked,
+    setPlayerProfile,
+    setInteractPrompt,
+    setGateMessage,
+    setPerfStats,
+  };
 }

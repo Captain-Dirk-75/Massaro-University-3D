@@ -51,6 +51,16 @@ export const CAMPUS_AREAS = [
     entrance: 'east',
   },
   {
+    id: 'glass-pavilion',
+    name: 'Glass Pavilion',
+    type: 'pavilion',
+    position: { x: 20, y: 0, z: 12 },
+    footprint: { width: 12, depth: 9 },
+    access: 'open',
+    build: 'unified-pavilion',
+    entrance: 'south',
+  },
+  {
     id: 'stillness-pavilion',
     name: 'Stillness Pavilion',
     type: 'lounge',

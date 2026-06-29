@@ -81,6 +81,11 @@ async function bootstrap() {
     rockColliders: rocks.colliders,
   });
 
+  const unifiedBuildings = campus.unifiedBuildings ?? [];
+  for (const building of unifiedBuildings) {
+    worldColliders.boxes.push(...building.colliders.boxes);
+  }
+
   const { group: cloudGroup, clouds } = createClouds();
   outdoorRoot.add(cloudGroup);
 
@@ -166,8 +171,15 @@ async function bootstrap() {
 
   const controls = createFirstPersonControls(camera, canvas, {
     colliders: worldColliders,
-    getFloorY(x, z) {
-      return interiorManager?.resolveFloorY(x, z) ?? 0;
+    getFloorY(x, z, currentY) {
+      if (interiorManager?.isIndoor()) {
+        return interiorManager.resolveFloorY(x, z);
+      }
+      for (const building of unifiedBuildings) {
+        const y = building.getFloorY(x, z);
+        if (y != null) return y;
+      }
+      return 0;
     },
     onLockChange(locked) {
       appState.pointerLocked = locked;
@@ -240,6 +252,14 @@ async function bootstrap() {
   });
 
   let sessionSaveTimer = 0;
+  let perfTimer = 0;
+  let perfFrames = 0;
+  let lastFps = 0;
+
+  window.logPerf = () => {
+    console.log('renderer.info.render:', { ...renderer.info.render });
+    console.log('renderer.info.memory:', { ...renderer.info.memory });
+  };
 
   window.addEventListener('beforeunload', () => {
     persist();
@@ -249,8 +269,23 @@ async function bootstrap() {
     renderer,
     scene: outdoorScene,
     camera,
-    render: () => interiorManager.render(),
+    render: () => {
+      interiorManager.render();
+      hud.setPerfStats({
+        fps: lastFps,
+        drawCalls: renderer.info.render.calls,
+        triangles: renderer.info.render.triangles,
+      });
+    },
     onUpdate(delta) {
+      perfFrames += 1;
+      perfTimer += delta;
+      if (perfTimer >= 0.5) {
+        lastFps = Math.round(perfFrames / perfTimer);
+        perfTimer = 0;
+        perfFrames = 0;
+      }
+
       if (!isUiBlocking() && !interiorManager.isTransitioning()) {
         controls.update(delta);
       }
@@ -258,6 +293,9 @@ async function bootstrap() {
       if (!interiorManager.isIndoor()) {
         animations.update(delta);
         areaGates.update(camera);
+        for (const building of unifiedBuildings) {
+          building.updateRoof(camera.position);
+        }
       }
 
       playerAvatar.syncToCamera(camera);

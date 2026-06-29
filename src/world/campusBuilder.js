@@ -4,6 +4,7 @@ import { buildLibrary } from './library.js';
 import { buildWaterFeature } from './waterFeature.js';
 import { buildPatronGarden } from './builders/patronGarden.js';
 import { buildStillnessPavilion } from './builders/stillnessPavilion.js';
+import { createBuilding, createPavilionOpts } from './buildings/index.js';
 
 const BUILDERS = {
   library: buildLibrary,
@@ -18,6 +19,7 @@ const BUILDERS = {
 export function createCampus() {
   const root = new THREE.Group();
   let waterMaterial = null;
+  const unifiedBuildings = [];
   const campusAreas = getCachedCampusAreas();
 
   const gatedAreas = campusAreas.filter(
@@ -26,6 +28,13 @@ export function createCampus() {
 
   for (const area of campusAreas) {
     if (!area.build) continue;
+
+    if (area.build === 'unified-pavilion') {
+      const building = createBuilding(createPavilionOpts(area));
+      root.add(building.group);
+      unifiedBuildings.push(building);
+      continue;
+    }
 
     const builder = BUILDERS[area.build];
     if (!builder) continue;
@@ -45,5 +54,6 @@ export function createCampus() {
     areas: campusAreas,
     gatedAreas,
     waterMaterial,
+    unifiedBuildings,
   };
 }
