@@ -18,7 +18,6 @@ const BUILDERS = {
 export function createCampus() {
   const root = new THREE.Group();
   let waterMaterial = null;
-  const libraryExteriorWindows = [];
   const campusAreas = getCachedCampusAreas();
 
   const gatedAreas = campusAreas.filter(
@@ -36,9 +35,6 @@ export function createCampus() {
     if (area.build === 'water-feature') {
       root.add(result.group);
       waterMaterial = result.waterMaterial;
-    } else if (area.build === 'library') {
-      root.add(result.group);
-      libraryExteriorWindows.push(result.entranceGlass, ...result.facadeGlasses);
     } else {
       root.add(result.group ?? result);
     }
@@ -49,6 +45,5 @@ export function createCampus() {
     areas: campusAreas,
     gatedAreas,
     waterMaterial,
-    libraryExteriorWindows,
   };
 }

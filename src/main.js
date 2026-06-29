@@ -189,12 +189,7 @@ async function bootstrap() {
     controls,
     outdoorColliders: worldColliders,
     interiors,
-    renderer,
   });
-
-  for (const glass of campus.libraryExteriorWindows ?? []) {
-    interiorManager.registerExteriorWindow(glass);
-  }
 
   const entranceTargets = interiorManager.createEntranceTargets();
 

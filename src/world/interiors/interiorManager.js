@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { buildInterior } from './interiorBuilder.js';
 import { applyInteriorAtmosphere } from './interiorAtmosphere.js';
-import { createInteriorWindowViews } from './interiorWindows.js';
 
 /**
  * Manages outdoor ↔ indoor scene swaps with fade transitions.
@@ -18,7 +17,6 @@ export function createInteriorManager({
   controls,
   outdoorColliders,
   interiors,
-  renderer,
 }) {
   let active = 'outdoor';
   let currentInterior = null;
@@ -26,29 +24,12 @@ export function createInteriorManager({
   const built = new Map();
   let getFloorY = null;
 
-  const windowViews = createInteriorWindowViews({
-    outdoorScene,
-    outdoorRoot,
-    renderer,
-  });
-
   applyInteriorAtmosphere(indoorScene);
 
   function getBuilt(def) {
     if (!built.has(def.id)) {
       const result = buildInterior(def);
       result.group.visible = false;
-
-      const offset = new THREE.Vector3(
-        def.worldOffset?.x ?? 0,
-        def.worldOffset?.y ?? 0,
-        def.worldOffset?.z ?? 0,
-      );
-      for (const slot of result.windows ?? []) {
-        windowViews.registerWindow(slot.mesh, slot.localPosition, slot.outwardNormal, offset);
-      }
-      windowViews.finalize();
-
       indoorScene.add(result.group);
       built.set(def.id, result);
     }
@@ -132,12 +113,7 @@ export function createInteriorManager({
     return transitioning || fade.isBusy();
   }
 
-  function registerExteriorWindow(mesh) {
-    windowViews.registerExteriorWindow(mesh);
-  }
-
   function render() {
-    windowViews.update();
     if (active === 'outdoor') {
       outdoorComposer.render();
     } else {
@@ -195,6 +171,5 @@ export function createInteriorManager({
     getExitTarget,
     findInterior,
     resolveFloorY,
-    registerExteriorWindow,
   };
 }

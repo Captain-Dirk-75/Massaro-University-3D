@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-29 (two-story classical library)
+**Last updated:** 2026-06-29 (stylized glass windows)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-29 — Replace cubemap windows with reusable stylized glass (src/world/materials/glass.js)
 - 2026-06-29 — Shared cubemap windows with world-space parallax; glass entrance inside and out
 - 2026-06-29 — Flip library window UV slices so left/right panes align with panorama
 - 2026-06-29 — Fix library deck slab overlap on stairwell; window UV panorama + pixel-ratio RT pass

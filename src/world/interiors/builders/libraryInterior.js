@@ -4,6 +4,7 @@ import { seededRandom } from '../../procedural/random.js';
 import { createInteriorColliders } from '../interiorCollisions.js';
 import { getLibraryFloorY, LIBRARY_STORY_HEIGHT, LIBRARY_STAIR_HOLE } from '../interiorFloors.js';
 import { SUN_COLOR, SUN_INTENSITY } from '../../lighting.js';
+import { createInteriorGlass } from '../../materials/glass.js';
 
 // ── Mood knobs ──
 export const FLOOR_COLOR = 0xb8a888;
@@ -86,8 +87,8 @@ function buildShell(room) {
   const hd = room.depth / 2;
   const h = room.height;
   const story = LIBRARY_STORY_HEIGHT;
-  const windows = [];
   const wallThickness = 0.35;
+  const paneMat = createInteriorGlass();
   const frameMat = woodMat(0x8a7060);
 
   const floor = addShadowed(
@@ -137,35 +138,25 @@ function buildShell(room) {
 
       for (const wx of windowRows) {
         const glassZ = side * (hd - wallThickness - 0.06);
-        const glass = new THREE.Mesh(glassGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+        const glass = new THREE.Mesh(glassGeo, paneMat);
         glass.position.set(wx, wy, glassZ);
         glass.rotation.y = side > 0 ? Math.PI : 0;
+        glass.renderOrder = 1;
         group.add(glass);
 
         addWindowFrame(group, wx, wy, glassZ, side, frameMat);
-
-        windows.push({
-          mesh: glass,
-          localPosition: new THREE.Vector3(wx, wy, side * (hd - 0.12)),
-          outwardNormal: new THREE.Vector3(0, 0, side),
-        });
       }
     }
   }
 
   const exitGlass = new THREE.Mesh(
     new THREE.PlaneGeometry(doorW - 0.2, doorH - 0.15),
-    new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    createInteriorGlass(),
   );
   exitGlass.position.set(0, doorH / 2, hd - wallThickness - 0.08);
   exitGlass.rotation.y = Math.PI;
+  exitGlass.renderOrder = 1;
   group.add(exitGlass);
-
-  windows.push({
-    mesh: exitGlass,
-    localPosition: new THREE.Vector3(0, doorH / 2, hd - 0.12),
-    outwardNormal: new THREE.Vector3(0, 0, 1),
-  });
 
   for (const side of [-1, 1]) {
     const wz = side * (hd - 0.5);
@@ -176,7 +167,7 @@ function buildShell(room) {
     group.add(ledge);
   }
 
-  return { group, windows };
+  return { group };
 }
 
 function buildWainscoting(room) {
@@ -710,7 +701,6 @@ export function buildLibraryInterior(definition) {
     colliders: createInteriorColliders(room, colliderBoxes, {
       upperBounds: { minX: -hw, maxX: hw, minZ: -hd, maxZ: hd },
     }),
-    windows: shell.windows,
     getFloorY: getLibraryFloorY,
   };
 }

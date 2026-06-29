@@ -1,11 +1,10 @@
 import * as THREE from 'three';
 import { createBrickMaterial } from './procedural/brickMaterial.js';
+import { createExteriorGlass } from './materials/glass.js';
 
 // ── Mood knobs ──
 export const STONE_COLOR = 0xe0d6c8;
 export const STONE_DARK = 0xb8a898;
-export const WINDOW_GLOW = 0xffe8c0;
-export const WINDOW_GLOW_INTENSITY = 0.62;
 export const ROOF_OVERHANG = 1.4;
 
 const brickMat = () => createBrickMaterial(STONE_COLOR, STONE_DARK);
@@ -111,17 +110,10 @@ function createArchedWindow(width, height) {
 
   const glass = new THREE.Mesh(
     new THREE.PlaneGeometry(width * 0.92, height * 0.78),
-    new THREE.MeshStandardMaterial({
-      color: 0x8ab0c8,
-      emissive: WINDOW_GLOW,
-      emissiveIntensity: WINDOW_GLOW_INTENSITY,
-      roughness: 0.12,
-      metalness: 0.12,
-      transparent: true,
-      opacity: 0.88,
-    }),
+    createExteriorGlass(),
   );
   glass.position.z = 0.3;
+  glass.renderOrder = 1;
   group.add(glass);
 
   const arch = addShadowed(
@@ -272,19 +264,17 @@ export function buildLibrary(area) {
 
   const entranceGlass = new THREE.Mesh(
     new THREE.PlaneGeometry(2.7, 3.1),
-    new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    createExteriorGlass(),
   );
   entranceGlass.position.set(0, 1.75, 2.78);
+  entranceGlass.renderOrder = 1;
   library.add(entranceGlass);
 
-  const facadeGlasses = [];
   const windowPositions = [-9, -3, 3, 9];
   for (const x of windowPositions) {
     const win = createArchedWindow(3.5, 4.6);
     win.position.set(x, 6.1, 0.75);
     library.add(win);
-    const glass = win.children.find((child) => child.isMesh && child.geometry.type === 'PlaneGeometry');
-    if (glass) facadeGlasses.push(glass);
   }
 
   const steps = [6, 4.5, 3];
@@ -300,5 +290,5 @@ export function buildLibrary(area) {
   library.add(createWing('left'));
   library.add(createWing('right'));
 
-  return { group: library, entranceGlass, facadeGlasses };
+  return library;
 }
