@@ -6,11 +6,19 @@ export const LIBRARY_STORY_HEIGHT = 4.0;
 /** Eye-level threshold for upper-floor collision + snapping. */
 export const LIBRARY_UPPER_THRESHOLD = 3.0;
 
+/** Cut-out in the second-floor deck — must clear the full stair shaft. */
+export const LIBRARY_STAIR_HOLE = {
+  minX: -13.6,
+  maxX: -8.8,
+  minZ: -4.2,
+  maxZ: 6.4,
+};
+
 const STAIR = {
-  minX: -12.8,
-  maxX: -10.2,
+  minX: -12.9,
+  maxX: -10.1,
   bottomZ: 5.5,
-  topZ: -3.2,
+  topZ: -3.5,
 };
 
 function onStaircase(x, z) {

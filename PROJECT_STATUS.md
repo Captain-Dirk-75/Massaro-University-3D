@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-29 — Library windows: shared cubemap (one outdoor view); stairwell cut-out fixes ceiling clip
 - 2026-06-29 — Two-story classical library interior: 8.4m height, gallery upper floor, fixed windows + stairs
 - 2026-06-29 — Library interior: visible exit doorway, live window views (outdoor RT), walkable second-floor mezzanine
 - 2026-06-29 — Fix library approach: collision gap at portico, flipped exterior stairs, horizontal E-prompt distance

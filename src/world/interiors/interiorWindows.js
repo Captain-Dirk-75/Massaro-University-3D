@@ -1,83 +1,95 @@
 import * as THREE from 'three';
 
-const RT_WIDTH = 640;
-const RT_HEIGHT = 480;
-const WINDOW_FOV = 54;
+const CUBE_MAP_SIZE = 512;
 
 /**
- * Renders the outdoor scene into per-window textures while the player is indoors.
+ * Shared cubemap sampled by every window — one consistent outdoor world (one sun, one pool).
  */
+const WindowViewShader = {
+  uniforms: {
+    tCube: { value: null },
+    cubeOrigin: { value: new THREE.Vector3() },
+  },
+  vertexShader: /* glsl */ `
+    varying vec3 vWorldPos;
+    void main() {
+      vec4 worldPos = modelMatrix * vec4(position, 1.0);
+      vWorldPos = worldPos.xyz;
+      gl_Position = projectionMatrix * viewMatrix * worldPos;
+    }
+  `,
+  fragmentShader: /* glsl */ `
+    uniform samplerCube tCube;
+    uniform vec3 cubeOrigin;
+    varying vec3 vWorldPos;
+
+    void main() {
+      vec3 dir = normalize(vWorldPos - cubeOrigin);
+      vec3 color = texture(tCube, dir).rgb;
+      gl_FragColor = vec4(color, 1.0);
+    }
+  `,
+};
+
 export function createInteriorWindowViews({ outdoorScene, outdoorRoot, renderer }) {
   const views = [];
-  const camera = new THREE.PerspectiveCamera(WINDOW_FOV, RT_WIDTH / RT_HEIGHT, 0.5, 200);
-  const lookTarget = new THREE.Vector3();
-  const worldOffset = new THREE.Vector3();
+  const cubeOrigin = new THREE.Vector3();
+  let cubeRenderTarget = null;
+  let cubeCamera = null;
+  let sharedMaterial = null;
 
-  function registerWindow(mesh, localPosition, outwardNormal, offset) {
-    worldOffset.copy(offset);
-
-    const rt = new THREE.WebGLRenderTarget(RT_WIDTH, RT_HEIGHT, {
-      generateMipmaps: false,
-      depthBuffer: true,
-    });
-    rt.texture.colorSpace = THREE.SRGBColorSpace;
-    rt.texture.flipY = false;
-
-    mesh.material = new THREE.MeshBasicMaterial({
-      map: rt.texture,
+  function ensureCubeResources() {
+    if (cubeRenderTarget) return;
+    cubeRenderTarget = new THREE.WebGLCubeRenderTarget(CUBE_MAP_SIZE);
+    cubeRenderTarget.texture.colorSpace = THREE.SRGBColorSpace;
+    cubeCamera = new THREE.CubeCamera(0.5, 220, cubeRenderTarget);
+    sharedMaterial = new THREE.ShaderMaterial({
+      uniforms: THREE.UniformsUtils.clone(WindowViewShader.uniforms),
+      vertexShader: WindowViewShader.vertexShader,
+      fragmentShader: WindowViewShader.fragmentShader,
       depthWrite: false,
       depthTest: true,
-      toneMapped: false,
       side: THREE.DoubleSide,
     });
-    mesh.renderOrder = 2;
+    sharedMaterial.uniforms.tCube.value = cubeRenderTarget.texture;
+  }
 
-    views.push({
-      mesh,
-      localPosition: localPosition.clone(),
-      outwardNormal: outwardNormal.clone(),
-      rt,
-    });
+  function registerWindow(mesh, _localPosition, _outwardNormal, offset) {
+    ensureCubeResources();
+
+    cubeOrigin.set(offset.x, offset.y + 3.2, offset.z);
+    sharedMaterial.uniforms.cubeOrigin.value.copy(cubeOrigin);
+
+    mesh.material = sharedMaterial;
+    mesh.renderOrder = 2;
+    views.push({ mesh });
   }
 
   function update() {
-    if (views.length === 0) return;
+    if (views.length === 0 || !cubeCamera) return;
 
-    const prevTarget = renderer.getRenderTarget();
-    const prevAutoClear = renderer.autoClear;
     const prevToneMapping = renderer.toneMapping;
-    const prevExposure = renderer.toneMappingExposure;
 
     outdoorRoot.visible = true;
-    renderer.autoClear = true;
     renderer.toneMapping = THREE.NoToneMapping;
 
-    for (const view of views) {
-      camera.position.copy(view.localPosition).add(worldOffset);
-      lookTarget.copy(camera.position).add(view.outwardNormal);
-      camera.lookAt(lookTarget);
-      camera.updateMatrixWorld(true);
+    cubeCamera.position.copy(cubeOrigin);
+    cubeCamera.update(renderer, outdoorScene);
 
-      renderer.setRenderTarget(view.rt);
-      renderer.setViewport(0, 0, RT_WIDTH, RT_HEIGHT);
-      renderer.clear();
-      renderer.render(outdoorScene, camera);
-    }
-
-    renderer.setRenderTarget(prevTarget);
-    renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
-    renderer.autoClear = prevAutoClear;
     renderer.toneMapping = prevToneMapping;
-    renderer.toneMappingExposure = prevExposure;
     outdoorRoot.visible = false;
   }
 
   function dispose() {
     for (const view of views) {
-      view.rt.dispose();
-      view.mesh.material.dispose();
+      view.mesh.material = new THREE.MeshBasicMaterial({ color: 0x888888 });
     }
     views.length = 0;
+    sharedMaterial?.dispose();
+    cubeRenderTarget?.dispose();
+    sharedMaterial = null;
+    cubeRenderTarget = null;
+    cubeCamera = null;
   }
 
   return { registerWindow, update, dispose };

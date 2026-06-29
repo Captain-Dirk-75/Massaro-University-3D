@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { seededRandom } from '../../procedural/random.js';
 import { createInteriorColliders } from '../interiorCollisions.js';
-import { getLibraryFloorY, LIBRARY_STORY_HEIGHT } from '../interiorFloors.js';
+import { getLibraryFloorY, LIBRARY_STORY_HEIGHT, LIBRARY_STAIR_HOLE } from '../interiorFloors.js';
 import { SUN_COLOR, SUN_INTENSITY } from '../../lighting.js';
 
 // ── Mood knobs ──
@@ -16,7 +16,8 @@ export const INTERIOR_AMBIENT_INTENSITY = 0.34;
 export const INTERIOR_POINT_INTENSITY = 0.9;
 export const INTERIOR_POINT_WARMTH = 0xffd8a0;
 
-const STAIR_HOLE = { minX: -13.2, maxX: -9.4, minZ: -3.8, maxZ: 5.8 };
+const STAIR_HOLE = LIBRARY_STAIR_HOLE;
+const DECK_EDGE_X = STAIR_HOLE.maxX;
 
 function addShadowed(mesh) {
   mesh.castShadow = true;
@@ -185,42 +186,64 @@ function buildWainscoting(room) {
   return group;
 }
 
+function addDeckSlab(group, w, d, cx, cz, y, deckMat, undersideMat) {
+  const slab = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(w, 0.2, d), deckMat));
+  slab.position.set(cx, y + 0.1, cz);
+  group.add(slab);
+
+  const under = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(w, 0.06, d), undersideMat));
+  under.position.set(cx, y - 0.03, cz);
+  group.add(under);
+}
+
 function buildFloorDeck(room) {
   const group = new THREE.Group();
   const hw = room.width / 2;
   const hd = room.depth / 2;
   const y = LIBRARY_STORY_HEIGHT;
   const deckMat = new THREE.MeshStandardMaterial({ color: FLOOR_COLOR, roughness: 0.88 });
-  const westW = hw - 9.4;
+  const undersideMat = new THREE.MeshStandardMaterial({ color: 0xd8d0c4, roughness: 0.94 });
+  const westW = hw - DECK_EDGE_X;
+  const westCx = (-hw + DECK_EDGE_X) / 2;
+  const eastW = hw - DECK_EDGE_X;
+  const eastCx = (DECK_EDGE_X + hw) / 2;
 
-  const eastSlab = addShadowed(
-    new THREE.Mesh(new THREE.BoxGeometry(hw - 9.4, 0.2, hd * 2), deckMat),
-  );
-  eastSlab.position.set((-9.4 + hw) / 2, y + 0.1, 0);
-  group.add(eastSlab);
+  addDeckSlab(group, eastW, hd * 2, eastCx, 0, y, deckMat, undersideMat);
 
-  const westNorth = addShadowed(
-    new THREE.Mesh(new THREE.BoxGeometry(westW, 0.2, hd + STAIR_HOLE.minZ), deckMat),
-  );
-  westNorth.position.set((-hw - 9.4) / 2, y + 0.1, (STAIR_HOLE.minZ - hd) / 2);
-  group.add(westNorth);
+  const westNorthD = hd + STAIR_HOLE.minZ;
+  addDeckSlab(group, westW, westNorthD, westCx, (STAIR_HOLE.minZ - hd) / 2, y, deckMat, undersideMat);
 
-  const westSouth = addShadowed(
-    new THREE.Mesh(new THREE.BoxGeometry(westW, 0.2, hd - STAIR_HOLE.maxZ), deckMat),
-  );
-  westSouth.position.set((-hw - 9.4) / 2, y + 0.1, (hd + STAIR_HOLE.maxZ) / 2);
-  group.add(westSouth);
+  const westSouthD = hd - STAIR_HOLE.maxZ;
+  addDeckSlab(group, westW, westSouthD, westCx, (hd + STAIR_HOLE.maxZ) / 2, y, deckMat, undersideMat);
 
-  const underside = addShadowed(
-    new THREE.Mesh(
-      new THREE.BoxGeometry(room.width - 1, 0.06, room.depth - 1),
-      new THREE.MeshStandardMaterial({ color: 0xd8d0c4, roughness: 0.94 }),
-    ),
-  );
-  underside.position.set(0, y - 0.03, 0);
-  group.add(underside);
+  buildStairwellTrim(group, y);
 
   return group;
+}
+
+function buildStairwellTrim(group, deckY) {
+  const trimMat = woodMat(0x9a8068);
+  const holeW = STAIR_HOLE.maxX - STAIR_HOLE.minX;
+  const holeD = STAIR_HOLE.maxZ - STAIR_HOLE.minZ;
+  const cx = (STAIR_HOLE.minX + STAIR_HOLE.maxX) / 2;
+  const cz = (STAIR_HOLE.minZ + STAIR_HOLE.maxZ) / 2;
+  const barH = 0.14;
+
+  const northBar = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(holeW, barH, 0.12), trimMat));
+  northBar.position.set(cx, deckY + 0.18, STAIR_HOLE.minZ);
+  group.add(northBar);
+
+  const southBar = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(holeW, barH, 0.12), trimMat));
+  southBar.position.set(cx, deckY + 0.18, STAIR_HOLE.maxZ);
+  group.add(southBar);
+
+  const westBar = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.12, barH, holeD), trimMat));
+  westBar.position.set(STAIR_HOLE.minX, deckY + 0.18, cz);
+  group.add(westBar);
+
+  const eastBar = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.12, barH, holeD), trimMat));
+  eastBar.position.set(STAIR_HOLE.maxX, deckY + 0.18, cz);
+  group.add(eastBar);
 }
 
 function buildColumns(room) {
@@ -416,8 +439,8 @@ function buildStaircase(room) {
   return {
     group: stairs,
     colliders: [
-      { minX: -12.85, maxX: -12.45, minZ: -3.5, maxZ: 6.2, level: 'all' },
-      { minX: -10.55, maxX: -10.15, minZ: -3.5, maxZ: 6.2, level: 'all' },
+      { minX: -12.95, maxX: -12.55, minZ: -4.2, maxZ: 6.4, level: 'all' },
+      { minX: -10.45, maxX: -10.05, minZ: -4.2, maxZ: 6.4, level: 'all' },
     ],
   };
 }
