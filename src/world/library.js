@@ -261,23 +261,30 @@ export function buildLibrary(area) {
   doorArch.rotation.x = Math.PI / 2;
   library.add(doorArch);
 
-  const doorway = addShadowed(
+  const doorFrame = addShadowed(
     new THREE.Mesh(
-      new THREE.BoxGeometry(3.0, 3.5, 0.38),
-      new THREE.MeshStandardMaterial({
-        color: 0x3a3028,
-        roughness: 0.95,
-      }),
+      new THREE.BoxGeometry(3.2, 3.6, 0.28),
+      stoneDarkMat(),
     ),
   );
-  doorway.position.set(0, 1.75, 2.6);
-  library.add(doorway);
+  doorFrame.position.set(0, 1.8, 2.55);
+  library.add(doorFrame);
 
+  const entranceGlass = new THREE.Mesh(
+    new THREE.PlaneGeometry(2.7, 3.1),
+    new THREE.MeshBasicMaterial({ color: 0xffffff }),
+  );
+  entranceGlass.position.set(0, 1.75, 2.78);
+  library.add(entranceGlass);
+
+  const facadeGlasses = [];
   const windowPositions = [-9, -3, 3, 9];
   for (const x of windowPositions) {
     const win = createArchedWindow(3.5, 4.6);
     win.position.set(x, 6.1, 0.75);
     library.add(win);
+    const glass = win.children.find((child) => child.isMesh && child.geometry.type === 'PlaneGeometry');
+    if (glass) facadeGlasses.push(glass);
   }
 
   const steps = [6, 4.5, 3];
@@ -293,5 +300,5 @@ export function buildLibrary(area) {
   library.add(createWing('left'));
   library.add(createWing('right'));
 
-  return library;
+  return { group: library, entranceGlass, facadeGlasses };
 }

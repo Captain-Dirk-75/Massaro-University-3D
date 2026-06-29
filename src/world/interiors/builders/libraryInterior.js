@@ -129,13 +129,15 @@ function buildShell(room) {
 
   for (let floorIdx = 0; floorIdx < 2; floorIdx++) {
     const wy = 1.9 + floorIdx * story;
-    const windowRows = [-8, 0, 8];
     const glassGeo = new THREE.PlaneGeometry(3.0, 2.2);
 
-    for (const wx of windowRows) {
-      for (const side of [-1, 1]) {
+    for (const side of [-1, 1]) {
+      const isSouthDoorWall = side > 0;
+      const windowRows = isSouthDoorWall && floorIdx === 0 ? [-8, 8] : [-8, 0, 8];
+
+      for (const wx of windowRows) {
         const glassZ = side * (hd - wallThickness - 0.06);
-        const glass = new THREE.Mesh(glassGeo, new THREE.MeshBasicMaterial({ color: 0x88aacc }));
+        const glass = new THREE.Mesh(glassGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
         glass.position.set(wx, wy, glassZ);
         glass.rotation.y = side > 0 ? Math.PI : 0;
         group.add(glass);
@@ -146,12 +148,24 @@ function buildShell(room) {
           mesh: glass,
           localPosition: new THREE.Vector3(wx, wy, side * (hd - 0.12)),
           outwardNormal: new THREE.Vector3(0, 0, side),
-          wallKey: `${side > 0 ? 'south' : 'north'}-${floorIdx}`,
-          wallX: wx,
         });
       }
     }
   }
+
+  const exitGlass = new THREE.Mesh(
+    new THREE.PlaneGeometry(doorW - 0.2, doorH - 0.15),
+    new THREE.MeshBasicMaterial({ color: 0xffffff }),
+  );
+  exitGlass.position.set(0, doorH / 2, hd - wallThickness - 0.08);
+  exitGlass.rotation.y = Math.PI;
+  group.add(exitGlass);
+
+  windows.push({
+    mesh: exitGlass,
+    localPosition: new THREE.Vector3(0, doorH / 2, hd - 0.12),
+    outwardNormal: new THREE.Vector3(0, 0, 1),
+  });
 
   for (const side of [-1, 1]) {
     const wz = side * (hd - 0.5);

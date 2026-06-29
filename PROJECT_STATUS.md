@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-29 — Shared cubemap windows with world-space parallax; glass entrance inside and out
 - 2026-06-29 — Flip library window UV slices so left/right panes align with panorama
 - 2026-06-29 — Fix library deck slab overlap on stairwell; window UV panorama + pixel-ratio RT pass
 - 2026-06-29 — Library windows: per-wall panorama slices (visible + continuous outdoor view)

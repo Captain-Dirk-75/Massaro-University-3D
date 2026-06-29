@@ -192,6 +192,10 @@ async function bootstrap() {
     renderer,
   });
 
+  for (const glass of campus.libraryExteriorWindows ?? []) {
+    interiorManager.registerExteriorWindow(glass);
+  }
+
   const entranceTargets = interiorManager.createEntranceTargets();
 
   function getInteractionTargets() {

@@ -45,10 +45,7 @@ export function createInteriorManager({
         def.worldOffset?.z ?? 0,
       );
       for (const slot of result.windows ?? []) {
-        windowViews.registerWindow(slot.mesh, slot.localPosition, slot.outwardNormal, offset, {
-          wallKey: slot.wallKey,
-          wallX: slot.wallX,
-        });
+        windowViews.registerWindow(slot.mesh, slot.localPosition, slot.outwardNormal, offset);
       }
       windowViews.finalize();
 
@@ -135,11 +132,15 @@ export function createInteriorManager({
     return transitioning || fade.isBusy();
   }
 
+  function registerExteriorWindow(mesh) {
+    windowViews.registerExteriorWindow(mesh);
+  }
+
   function render() {
+    windowViews.update();
     if (active === 'outdoor') {
       outdoorComposer.render();
     } else {
-      windowViews.update();
       indoorComposer.render();
     }
   }
@@ -194,5 +195,6 @@ export function createInteriorManager({
     getExitTarget,
     findInterior,
     resolveFloorY,
+    registerExteriorWindow,
   };
 }
