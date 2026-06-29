@@ -3,5 +3,6 @@
  */
 export const appState = {
   pointerLocked: false,
+  customizePanelOpen: false,
   isReady: false,
 };

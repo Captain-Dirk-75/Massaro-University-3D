@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 
+// ── Mood knob ──
+export const TONE_EXPOSURE = 1.08;
+
 export function createRenderer(canvas) {
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -12,7 +15,7 @@ export function createRenderer(canvas) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMappingExposure = TONE_EXPOSURE;
 
   return renderer;
 }

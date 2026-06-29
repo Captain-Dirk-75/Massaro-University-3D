@@ -1,0 +1,48 @@
+export const BODY_PRESETS = {
+  slim: {
+    label: 'Slim',
+    torsoWidth: 0.32,
+    torsoHeight: 0.88,
+    legHeight: 0.82,
+    legWidth: 0.11,
+    armLength: 0.62,
+    shoulderWidth: 0.48,
+    headRadius: 0.17,
+    scale: 0.94,
+  },
+  average: {
+    label: 'Average',
+    torsoWidth: 0.4,
+    torsoHeight: 0.92,
+    legHeight: 0.8,
+    legWidth: 0.13,
+    armLength: 0.64,
+    shoulderWidth: 0.56,
+    headRadius: 0.18,
+    scale: 1.0,
+  },
+  sturdy: {
+    label: 'Sturdy',
+    torsoWidth: 0.5,
+    torsoHeight: 0.9,
+    legHeight: 0.76,
+    legWidth: 0.16,
+    armLength: 0.6,
+    shoulderWidth: 0.66,
+    headRadius: 0.19,
+    scale: 1.03,
+  },
+  tall: {
+    label: 'Tall',
+    torsoWidth: 0.38,
+    torsoHeight: 1.05,
+    legHeight: 0.92,
+    legWidth: 0.12,
+    armLength: 0.7,
+    shoulderWidth: 0.52,
+    headRadius: 0.18,
+    scale: 1.08,
+  },
+};
+
+export const BODY_PRESET_IDS = Object.keys(BODY_PRESETS);

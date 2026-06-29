@@ -1,4 +1,4 @@
-export function createRenderLoop({ renderer, scene, camera, onUpdate }) {
+export function createRenderLoop({ renderer, scene, camera, render, onUpdate }) {
   const clock = { last: performance.now() };
 
   function frame(now) {
@@ -7,8 +7,13 @@ export function createRenderLoop({ renderer, scene, camera, onUpdate }) {
     const delta = Math.min((now - clock.last) / 1000, 0.1);
     clock.last = now;
 
-    onUpdate(delta);
-    renderer.render(scene, camera);
+    onUpdate?.(delta);
+
+    if (render) {
+      render();
+    } else {
+      renderer.render(scene, camera);
+    }
   }
 
   requestAnimationFrame(frame);
