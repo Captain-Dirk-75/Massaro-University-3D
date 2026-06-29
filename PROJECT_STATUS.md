@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-29 (procedural visuals pass)
+**Last updated:** 2026-06-29 (library interior fixes)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-29 — Library interior: visible exit doorway, live window views (outdoor RT), walkable second-floor mezzanine
 - 2026-06-29 — Fix library approach: collision gap at portico, flipped exterior stairs, horizontal E-prompt distance
 - 2026-06-29 — Walkable building interiors: data-driven scene swap, library furnished interior (E to enter/exit)
 - 2026-06-29 — Added first-person collision against trees, buildings, rocks, kiosk, guide, and campus bounds

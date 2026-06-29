@@ -2,7 +2,13 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function circleHitsAabb(x, z, radius, box) {
+function boxApplies(box, floorLevel) {
+  if (!box.level || box.level === 'all') return true;
+  return box.level === floorLevel;
+}
+
+function circleHitsAabb(x, z, radius, box, floorLevel = 'ground') {
+  if (!boxApplies(box, floorLevel)) return false;
   if (box.boundary) return false;
 
   const closestX = clamp(x, box.minX, box.maxX);
@@ -12,7 +18,10 @@ function circleHitsAabb(x, z, radius, box) {
   return dx * dx + dz * dz < radius * radius;
 }
 
-function pushCircleFromAabb(x, z, radius, box) {
+function pushCircleFromAabb(x, z, radius, box, floorLevel = 'ground') {
+  if (!boxApplies(box, floorLevel)) {
+    return { x, z };
+  }
   if (box.boundary) {
     return {
       x: clamp(x, box.minX + radius, box.maxX - radius),
@@ -72,10 +81,10 @@ function pushCircleFromCircle(x, z, playerRadius, obstacle) {
   };
 }
 
-function collidesAt(x, z, radius, colliders) {
+function collidesAt(x, z, radius, colliders, floorLevel = 'ground') {
   for (const box of colliders.boxes) {
     if (box.boundary) continue;
-    if (circleHitsAabb(x, z, radius, box)) return true;
+    if (circleHitsAabb(x, z, radius, box, floorLevel)) return true;
   }
   for (const circle of colliders.circles) {
     if (Math.hypot(x - circle.x, z - circle.z) < radius + circle.r) return true;
@@ -83,14 +92,14 @@ function collidesAt(x, z, radius, colliders) {
   return false;
 }
 
-function resolvePosition(x, z, radius, colliders) {
+function resolvePosition(x, z, radius, colliders, floorLevel = 'ground') {
   let rx = x;
   let rz = z;
 
   for (let i = 0; i < 6; i++) {
     for (const box of colliders.boxes) {
-      if (circleHitsAabb(rx, rz, radius, box) || box.boundary) {
-        const pushed = pushCircleFromAabb(rx, rz, radius, box);
+      if (circleHitsAabb(rx, rz, radius, box, floorLevel) || (box.boundary && boxApplies(box, floorLevel))) {
+        const pushed = pushCircleFromAabb(rx, rz, radius, box, floorLevel);
         rx = pushed.x;
         rz = pushed.z;
       }
@@ -108,7 +117,7 @@ function resolvePosition(x, z, radius, colliders) {
 /**
  * Apply horizontal movement with slide + depenetration against world colliders.
  */
-export function applyCollisionMovement(camera, delta, colliders) {
+export function applyCollisionMovement(camera, delta, colliders, floorLevel = 'ground') {
   if (!colliders) {
     camera.position.add(delta);
     return;
@@ -123,9 +132,9 @@ export function applyCollisionMovement(camera, delta, colliders) {
   let nextX = targetX;
   let nextZ = targetZ;
 
-  if (collidesAt(nextX, nextZ, radius, colliders)) {
-    const slideX = !collidesAt(targetX, startZ, radius, colliders);
-    const slideZ = !collidesAt(startX, targetZ, radius, colliders);
+  if (collidesAt(nextX, nextZ, radius, colliders, floorLevel)) {
+    const slideX = !collidesAt(targetX, startZ, radius, colliders, floorLevel);
+    const slideZ = !collidesAt(startX, targetZ, radius, colliders, floorLevel);
 
     if (slideX) nextX = targetX;
     else nextX = startX;
@@ -134,7 +143,7 @@ export function applyCollisionMovement(camera, delta, colliders) {
     else nextZ = startZ;
   }
 
-  const resolved = resolvePosition(nextX, nextZ, radius, colliders);
+  const resolved = resolvePosition(nextX, nextZ, radius, colliders, floorLevel);
   camera.position.x = resolved.x;
   camera.position.z = resolved.z;
 }

@@ -23,12 +23,13 @@ export const INTERIORS = [
       label: 'Enter Library',
     },
     exit: {
-      position: { x: 0, y: 0, z: 12.5 },
-      radius: 2.8,
+      position: { x: 0, y: 0, z: 14.2 },
+      radius: 4.5,
       label: 'Exit to Campus',
     },
     spawn: { x: 0, y: 1.7, z: 10, yaw: Math.PI },
     returnSpawn: { x: 0, y: 1.7, z: -27.5, yaw: 0 },
+    worldOffset: { x: 0, y: 0, z: -40 },
     room: { width: 28, depth: 32, height: 6.2 },
     build: 'library',
     furniture: {

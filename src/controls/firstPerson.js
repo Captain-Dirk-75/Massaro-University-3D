@@ -6,7 +6,7 @@ const LOOK_SENSITIVITY = 0.002;
 const PLAYER_HEIGHT = 1.7;
 const PITCH_LIMIT = Math.PI / 2 - 0.01;
 
-export function createFirstPersonControls(camera, canvas, { onLockChange, colliders } = {}) {
+export function createFirstPersonControls(camera, canvas, { onLockChange, colliders, getFloorY } = {}) {
   const keys = new Set();
   let yaw = 0;
   let pitch = 0;
@@ -64,12 +64,15 @@ export function createFirstPersonControls(camera, canvas, { onLockChange, collid
     if (keys.has('KeyD')) move.add(right);
     if (keys.has('KeyA')) move.sub(right);
 
+    const floorY = getFloorY ? getFloorY(camera.position.x, camera.position.z) : 0;
+    const floorLevel = floorY >= 1.5 ? 'upper' : 'ground';
+
     if (move.lengthSq() > 0) {
       move.normalize().multiplyScalar(MOVE_SPEED * delta);
-      applyCollisionMovement(camera, move, activeColliders);
+      applyCollisionMovement(camera, move, activeColliders, floorLevel);
     }
 
-    camera.position.y = PLAYER_HEIGHT;
+    camera.position.y = floorY + PLAYER_HEIGHT;
   }
 
   function setColliders(next) {

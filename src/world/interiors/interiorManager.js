@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { buildInterior } from './interiorBuilder.js';
 import { applyInteriorAtmosphere } from './interiorAtmosphere.js';
+import { createInteriorWindowViews } from './interiorWindows.js';
 
 /**
  * Manages outdoor ↔ indoor scene swaps with fade transitions.
@@ -17,11 +18,19 @@ export function createInteriorManager({
   controls,
   outdoorColliders,
   interiors,
+  renderer,
 }) {
   let active = 'outdoor';
   let currentInterior = null;
   let transitioning = false;
   const built = new Map();
+  let getFloorY = null;
+
+  const windowViews = createInteriorWindowViews({
+    outdoorScene,
+    outdoorRoot,
+    renderer,
+  });
 
   applyInteriorAtmosphere(indoorScene);
 
@@ -29,6 +38,16 @@ export function createInteriorManager({
     if (!built.has(def.id)) {
       const result = buildInterior(def);
       result.group.visible = false;
+
+      const offset = new THREE.Vector3(
+        def.worldOffset?.x ?? 0,
+        def.worldOffset?.y ?? 0,
+        def.worldOffset?.z ?? 0,
+      );
+      for (const slot of result.windows ?? []) {
+        windowViews.registerWindow(slot.mesh, slot.localPosition, slot.outwardNormal, offset);
+      }
+
       indoorScene.add(result.group);
       built.set(def.id, result);
     }
@@ -64,6 +83,7 @@ export function createInteriorManager({
       controls.setYaw(def.spawn.yaw);
     }
     controls.setColliders(interior.colliders);
+    getFloorY = interior.getFloorY ?? null;
 
     active = def.id;
     currentInterior = def;
@@ -94,6 +114,7 @@ export function createInteriorManager({
       controls.setYaw(def.returnSpawn.yaw);
     }
     controls.setColliders(outdoorColliders);
+    getFloorY = null;
 
     active = 'outdoor';
     currentInterior = null;
@@ -114,8 +135,13 @@ export function createInteriorManager({
     if (active === 'outdoor') {
       outdoorComposer.render();
     } else {
+      windowViews.update();
       indoorComposer.render();
     }
+  }
+
+  function resolveFloorY(x, z) {
+    return getFloorY ? getFloorY(x, z) : 0;
   }
 
   function createEntranceTargets() {
@@ -163,5 +189,6 @@ export function createInteriorManager({
     createEntranceTargets,
     getExitTarget,
     findInterior,
+    resolveFloorY,
   };
 }

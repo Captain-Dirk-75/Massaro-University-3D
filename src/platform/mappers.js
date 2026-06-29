@@ -153,6 +153,7 @@ export function interiorToContract(interior) {
       room: interior.room,
       build: interior.build,
       furniture: interior.furniture ?? {},
+      world_offset: interior.worldOffset ?? { x: 0, y: 0, z: 0 },
     },
   };
 }
@@ -169,6 +170,7 @@ export function interiorFromContract(contract) {
     room: contract.meta.room,
     build: contract.meta.build,
     furniture: contract.meta.furniture ?? {},
+    worldOffset: contract.meta.world_offset ?? { x: 0, y: 0, z: 0 },
   };
 }
 

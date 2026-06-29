@@ -162,8 +162,13 @@ async function bootstrap() {
 
   applyProfileToUi(playerState.profile);
 
+  let interiorManager;
+
   const controls = createFirstPersonControls(camera, canvas, {
     colliders: worldColliders,
+    getFloorY(x, z) {
+      return interiorManager?.resolveFloorY(x, z) ?? 0;
+    },
     onLockChange(locked) {
       appState.pointerLocked = locked;
       canvas.classList.toggle('is-locked', locked);
@@ -172,7 +177,7 @@ async function bootstrap() {
   });
 
   const interiors = getCachedInteriors();
-  const interiorManager = createInteriorManager({
+  interiorManager = createInteriorManager({
     outdoorScene,
     indoorScene,
     outdoorRoot,
@@ -184,6 +189,7 @@ async function bootstrap() {
     controls,
     outdoorColliders: worldColliders,
     interiors,
+    renderer,
   });
 
   const entranceTargets = interiorManager.createEntranceTargets();
