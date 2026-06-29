@@ -49,26 +49,43 @@ export const LIBRARY_GROUND_DOOR_Z = 3;   // hall → side-room doorway (front t
 export const LIBRARY_UPPER_DOOR_Z = -6;   // gallery → upper-room doorway (rear)
 
 // ── Double-height hall void (hole in floor-0 ceiling + floor-1 deck) ──
-//    Leaves a walkable gallery RING around all four sides on floor 1.
-export const LIBRARY_HALL_VOID = { minX: -5.5, maxX: 5.5, minZ: -3.0, maxZ: 8.0 };
+//    Open the whole front of the hall to full height; the walkable gallery is
+//    the rear (north) walkway plus the two side staircases that climb to it.
+export const LIBRARY_HALL_VOID = { minX: -5.5, maxX: 5.5, minZ: -3.0, maxZ: 9.65 };
 
-// ── Grand split staircase — stands FREE inside the hall void ──
-//    Single central flight rises to a mid-landing, then splits left+right and
-//    climbs to the rear gallery walkway. All flights climb toward −z (north),
-//    matching the proven splitStairFloorY handler.
-export const LIBRARY_SPLIT_STAIRS = {
-  landingY: 2.0,        // mid-landing height (≈ half story)
-  topFloor: 1,          // flights deliver onto floor 1 (the gallery)
-  main: { minX: -2.6, maxX: 2.6, minZ: 0.5, maxZ: 5.5 },   // foot at z=5.5 → landing at z=0.5
-  left: { minX: -5.4, maxX: -2.6, minZ: -3.0, maxZ: 0.5 }, // landing → gallery (north)
-  right: { minX: 2.6, maxX: 5.4, minZ: -3.0, maxZ: 0.5 },
-};
+// ── TWO matching straight staircases (foyer-style) ──
+//    One hugs the WEST hall wall, one the EAST, symmetric. Each is a single
+//    straight flight rising from the FRONT (south, floor 0) up to the REAR
+//    gallery walkway (north, floor 1). They stand clear of the partition walls
+//    with open floor at the base, and use STRAIGHT-run floor handling — NOT the
+//    split-stair handler.
+export const LIBRARY_STAIR_WIDTH = 1.8;
+export const LIBRARY_STAIR_VOID_GAP_X = 5.6; // inner (void-side) edge of each flight
+export const LIBRARY_STAIR_BASE_Z = 8.0;     // south foot — stepped onto from the hall
+export const LIBRARY_STAIR_TOP_Z = -2.5;     // north head — lands on the rear gallery
+export const LIBRARY_STAIR_STEPS = 14;
+
+const STAIR_OUTER_X = LIBRARY_STAIR_VOID_GAP_X + LIBRARY_STAIR_WIDTH; // 7.4 (≈0.4 m off the wall)
+
+export const LIBRARY_SIDE_STAIRS = [
+  { minX: -STAIR_OUTER_X, maxX: -LIBRARY_STAIR_VOID_GAP_X, minZ: LIBRARY_STAIR_TOP_Z, maxZ: LIBRARY_STAIR_BASE_Z, steps: LIBRARY_STAIR_STEPS },
+  { minX: LIBRARY_STAIR_VOID_GAP_X, maxX: STAIR_OUTER_X, minZ: LIBRARY_STAIR_TOP_Z, maxZ: LIBRARY_STAIR_BASE_Z, steps: LIBRARY_STAIR_STEPS },
+];
+
+// Deck/ceiling holes for the stair columns run to the south wall so no isolated
+// balcony patch is left above the stair feet (mesh + climb stay base→top above).
+const STAIR_HOLES = [
+  { minX: -STAIR_OUTER_X, maxX: -LIBRARY_STAIR_VOID_GAP_X, minZ: LIBRARY_STAIR_TOP_Z, maxZ: 9.65 },
+  { minX: LIBRARY_STAIR_VOID_GAP_X, maxX: STAIR_OUTER_X, minZ: LIBRARY_STAIR_TOP_Z, maxZ: 9.65 },
+];
 
 // ── Lighting — everything hangs HIGH; the player never meets a lamp ──
-//    Chandeliers drop from the 8.0 m grand ceiling; their shades sit ~4.6 m up.
+//    Chandeliers drop from the 8.0 m grand ceiling (shades ~4.6 m up) and sit
+//    only over the double-height void, never over the walkable rear gallery.
 export const LIBRARY_CHANDELIERS = [
-  { x: 0, z: 5.0, cordLength: 2.6, fromY: 'total' },
-  { x: 0, z: -1.0, cordLength: 2.6, fromY: 'total' },
+  { x: 0, z: 6.0, cordLength: 2.6, fromY: 'total' },
+  { x: 0, z: 1.5, cordLength: 2.6, fromY: 'total' },
+  { x: 0, z: -2.2, cordLength: 2.6, fromY: 'total' },
 ];
 // Wall sconces in side rooms — 3 m up a wall, well clear of any head.
 export const LIBRARY_SCONCE_HEIGHT = 3.0;
@@ -109,8 +126,9 @@ export const LIBRARY_FACADE = {
 // ── Heavy timber ceiling beams (grand vaulted feel, top ceiling only) ──
 export const LIBRARY_CEILING_BEAMS = 5;
 
-// ── Reception desk — to ONE SIDE of the entrance, never in the walk path ──
-export const LIBRARY_RECEPTION = { x: -5.0, z: 8.0, floor: 0 };
+// ── Reception desk — front-RIGHT of the hall, well off the door + walk-in path
+//    (door is x∈[-1.8,1.8]; desk clears it and the east staircase) ──
+export const LIBRARY_RECEPTION = { x: 3.5, z: 8.5, floor: 0 };
 
 // ── Membership-gated section: the upper-floor west archive ──
 //    Evaluated live by sectionGates.js against the existing access system.
@@ -182,17 +200,25 @@ export function createLibraryOpts(area) {
         openings: [{ at: LIBRARY_UPPER_DOOR_Z, width: 2.6, height: 3.0, bottom: 0 }] },
     ],
 
-    splitStairs: LIBRARY_SPLIT_STAIRS,
+    straightStairs: LIBRARY_SIDE_STAIRS,
 
-    // ── Open the hall vertically: cut floor-1 deck + floor-0 ceiling ──
-    floorHoles: [{ floor: 1, ...LIBRARY_HALL_VOID }],
-    ceilingHoles: [{ floor: 0, ...LIBRARY_HALL_VOID }],
+    // ── Open the hall vertically: cut floor-1 deck + floor-0 ceiling for the
+    //    void AND the two stair columns (so the stairs rise into the open) ──
+    floorHoles: [
+      { floor: 1, ...LIBRARY_HALL_VOID },
+      { floor: 1, ...STAIR_HOLES[0] },
+      { floor: 1, ...STAIR_HOLES[1] },
+    ],
+    ceilingHoles: [
+      { floor: 0, ...LIBRARY_HALL_VOID },
+      { floor: 0, ...STAIR_HOLES[0] },
+      { floor: 0, ...STAIR_HOLES[1] },
+    ],
 
-    // ── Gallery railing ringing the void (collides on the upper level) ──
+    // ── Rear gallery railing along the void edge (collides on the upper level);
+    //    the staircases carry their own banisters down each side ──
     galleryRailings: [
-      { minX: -5.5, maxX: 5.5, minZ: 7.9, maxZ: 8.0 },   // south (front balcony) edge
-      { minX: -5.6, maxX: -5.5, minZ: -3.0, maxZ: 8.0 }, // west edge
-      { minX: 5.5, maxX: 5.6, minZ: -3.0, maxZ: 8.0 },   // east edge
+      { minX: -5.5, maxX: 5.5, minZ: -3.1, maxZ: -3.0 },
     ],
 
     gates: [LIBRARY_GATED_SECTION],

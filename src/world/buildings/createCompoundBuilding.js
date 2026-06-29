@@ -8,6 +8,7 @@ import {
   buildInteriorCeiling,
   buildSplitStairMesh,
   buildStairMesh,
+  buildStraightStair,
   buildWallSconces,
   buildWallSegmentsAlongX,
   buildWallSegmentsAlongZ,
@@ -192,6 +193,7 @@ export function createCompoundBuilding(opts) {
     partitions = [],
     stairs = null,
     splitStairs = null,
+    straightStairs = [],
     floorHoles = [],
     ceilingHoles = [],
     galleryRailings = [],
@@ -282,6 +284,10 @@ export function createCompoundBuilding(opts) {
     buildStairMesh(stairs, storyHeight, palette, linerGroup);
   }
 
+  for (const flight of straightStairs) {
+    buildStraightStair(flight, storyHeight, palette, linerGroup, { steps: flight.steps });
+  }
+
   if (galleryRailings.length > 0) {
     const galleryY = storyHeight + floorHeight;
     buildGalleryRailing(galleryRailings, galleryY, palette, linerGroup, localColliders);
@@ -346,7 +352,15 @@ export function createCompoundBuilding(opts) {
     level: box.level ?? 'all',
   }));
 
+  function straightStairAt(lx, lz) {
+    for (const flight of straightStairs) {
+      if (pointInRect(lx, lz, flight)) return flight;
+    }
+    return null;
+  }
+
   function onStaircase(lx, lz) {
+    if (straightStairAt(lx, lz)) return true;
     if (splitStairs) {
       return collectStairRects(null, splitStairs).some((rect) => pointInRect(lx, lz, rect));
     }
@@ -355,6 +369,12 @@ export function createCompoundBuilding(opts) {
   }
 
   function stairFloorY(lx, lz) {
+    const flight = straightStairAt(lx, lz);
+    if (flight) {
+      // Straight run: floor at the south edge (maxZ), +storyHeight at the north edge (minZ).
+      const progress = THREE.MathUtils.clamp((flight.maxZ - lz) / (flight.maxZ - flight.minZ), 0, 1);
+      return progress * storyHeight + floorHeight;
+    }
     if (splitStairs) {
       return splitStairFloorY(lx, lz, splitStairs, storyHeight, floorHeight);
     }
