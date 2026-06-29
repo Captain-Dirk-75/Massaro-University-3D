@@ -223,4 +223,6 @@ async function bootstrap() {
   appState.isReady = true;
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  console.error('Failed to start Massaro University 3D:', error);
+});

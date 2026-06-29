@@ -109,6 +109,6 @@ export function pickTreeProfile(rand) {
   return TREE_PROFILES[0];
 }
 
-export function sampleRange(range, rand) {
-  return lerpRange(range, rand());
+export function sampleRange(range, t) {
+  return lerpRange(range, t);
 }

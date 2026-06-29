@@ -81,13 +81,13 @@ function buildCanopyGeometry(scale, seed, profile) {
       scale * 0.3,
       scale * canopyMul * (1.38 - i * 0.2) * (0.82 + rand() * 0.34),
     );
-    const geo = new THREE.IcosahedronGeometry(radius, rand() > 0.6 ? 1 : 0);
+    const geo = new THREE.IcosahedronGeometry(radius, 1);
     applyVertexColor(geo, foliageColor(rand, 0.12, profileShift(profile)));
 
     if (profile.id === 'wide' && rand() > 0.4) {
-      geo.scale(1.15, 0.72, 1.1);
+      geo.applyMatrix4(new THREE.Matrix4().makeScale(1.15, 0.72, 1.1));
     } else if (profile.id === 'tall' && rand() > 0.35) {
-      geo.scale(0.85, 1.12, 0.88);
+      geo.applyMatrix4(new THREE.Matrix4().makeScale(0.85, 1.12, 0.88));
     }
 
     const layerY = i === 0 ? radius : i * scale * spread + radius;
@@ -124,7 +124,7 @@ function buildBranchGeometry(scale, trunkH, seed, profile) {
       thickTop * scale,
       thickBase * scale,
       len,
-      rand() > 0.5 ? 5 : 4,
+      5,
     );
     geo.translate(0, len / 2, 0);
     geo.rotateZ(
@@ -177,10 +177,11 @@ function buildLeafGeometry(scale, seed, profile) {
 
   for (let i = 0; i < leafCount; i++) {
     const leafScale = scale * (0.1 + rand() * 0.13);
-    const geo =
-      rand() > 0.25
-        ? new THREE.ConeGeometry(leafScale * 0.5, leafScale * 1.5, 3)
-        : new THREE.OctahedronGeometry(leafScale * 0.55, 0);
+    const geo = new THREE.ConeGeometry(
+      leafScale * (0.45 + rand() * 0.15),
+      leafScale * (1.3 + rand() * 0.35),
+      3,
+    );
     geo.rotateX(Math.PI / 2);
     if (rand() > 0.5) geo.rotateZ((rand() - 0.5) * 0.6);
     applyVertexColor(geo, foliageColor(rand, 0.14, profileShift(profile)));
@@ -291,7 +292,7 @@ function createBushInstances(bushDefs) {
 
     for (let c = 0; c < clusters; c++) {
       const r = scale * (0.28 + rand() * 0.34);
-      const geo = new THREE.IcosahedronGeometry(r, rand() > 0.5 ? 1 : 0);
+      const geo = new THREE.IcosahedronGeometry(r, 1);
       applyVertexColor(geo, foliageColor(rand, 0.1));
 
       const matrix = new THREE.Matrix4();
