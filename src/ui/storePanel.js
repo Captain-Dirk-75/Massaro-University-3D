@@ -22,6 +22,16 @@ function tierLabel(tierId) {
   return findTierById(tierId)?.name ?? tierId;
 }
 
+function getTierIncludedItems(tier, catalogItems) {
+  return catalogItems.filter((item) => {
+    if (tier.unlockItemIds?.includes(item.id)) return true;
+    return (
+      tier.unlockTypes?.includes(item.type) &&
+      item.includedInTiers?.includes(tier.id)
+    );
+  });
+}
+
 export function createStorePanel({ onOpenChange, onCommerceChange }) {
   const panel = document.createElement('div');
   panel.id = 'store-panel';
@@ -56,7 +66,7 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
     .store-panel--hidden { display: none; }
 
     .store-panel__card {
-      width: min(520px, 94vw);
+      width: min(920px, 96vw);
       max-height: 90vh;
       overflow-y: auto;
       padding: 1.2rem 1.3rem 1.4rem;
@@ -110,7 +120,7 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
       border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    .store-item, .store-tier {
+    .store-item {
       display: flex;
       gap: 0.75rem;
       align-items: flex-start;
@@ -120,6 +130,98 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
       border-radius: 8px;
       background: rgba(0, 0, 0, 0.22);
       border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .store-tier-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.65rem;
+      margin-bottom: 0.5rem;
+    }
+
+    @media (max-width: 720px) {
+      .store-tier-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .store-tier-card {
+      display: flex;
+      flex-direction: column;
+      padding: 0.75rem 0.7rem;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      min-height: 100%;
+    }
+
+    .store-tier-card--active {
+      border-color: rgba(106, 140, 196, 0.45);
+      background: rgba(106, 140, 196, 0.08);
+    }
+
+    .store-tier-card__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.4rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .store-tier-card__name {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .store-tier-card__prices {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      margin-bottom: 0.55rem;
+    }
+
+    .store-tier-card__includes-label {
+      font-size: 0.68rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #989088;
+      margin-bottom: 0.35rem;
+    }
+
+    .store-tier-card__includes {
+      margin: 0 0 0.65rem;
+      padding-left: 1rem;
+      flex: 1;
+      font-size: 0.72rem;
+      color: #b0a898;
+      line-height: 1.45;
+    }
+
+    .store-tier-card__includes li {
+      margin-bottom: 0.2rem;
+    }
+
+    .store-tier-card__actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-top: auto;
+    }
+
+    .store-tier-card__actions .store-btn {
+      width: 100%;
+      text-align: center;
+    }
+
+    .store-tier-card--guest .store-tier-card__actions {
+      margin-top: 0.5rem;
+    }
+
+    .store-tier-card__free {
+      font-size: 0.78rem;
+      color: #b8e8c0;
+      text-align: center;
+      padding: 0.35rem 0;
     }
 
     .store-item__info { flex: 1; min-width: 0; }
@@ -202,22 +304,6 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
     .store-btn:disabled {
       opacity: 0.45;
       cursor: not-allowed;
-    }
-
-    .store-tier__perks {
-      margin: 0.4rem 0 0;
-      padding-left: 1rem;
-      font-size: 0.74rem;
-      color: #989088;
-    }
-
-    .store-tier__perks li { margin-bottom: 0.15rem; }
-
-    .store-tier__pricing {
-      display: flex;
-      flex-direction: column;
-      gap: 0.3rem;
-      align-items: flex-end;
     }
 
     .store-detail {
@@ -319,12 +405,57 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
 
     let html = '';
 
+    html += `<section class="store-section">
+      <h3 class="store-section__title">Memberships</h3>`;
+
     if (activeTier) {
       html += `<p class="store-item__meta" style="margin-bottom:0.75rem">
         Active membership: <strong>${activeTier.name}</strong>
         ${playerState.commerce.subscriptionPeriod ? `(${playerState.commerce.subscriptionPeriod})` : ''}
       </p>`;
     }
+
+    html += `<div class="store-tier-grid">`;
+
+    for (const tier of tiers) {
+      const isActive = playerState.commerce.activeTierId === tier.id;
+      const includedItems = getTierIncludedItems(tier, catalogItems);
+      const isGuest = tier.id === 'guest';
+
+      html += `<div class="store-tier-card${isActive ? ' store-tier-card--active' : ''}${isGuest ? ' store-tier-card--guest' : ''}" data-tier-id="${tier.id}">
+        <div class="store-tier-card__head">
+          <span class="store-tier-card__name">${tier.name}</span>
+          ${isActive ? '<span class="store-badge store-badge--active">Active</span>' : ''}
+        </div>
+        <div class="store-tier-card__prices">
+          <span class="store-price">${formatPrice(tier.monthlyPrice)}/mo</span>
+          <span class="store-price">${formatPrice(tier.yearlyPrice)}/yr</span>
+        </div>
+        <p class="store-tier-card__includes-label">Included content</p>
+        <ul class="store-tier-card__includes">
+          ${includedItems.length > 0
+            ? includedItems.map((item) => `<li>${item.title}</li>`).join('')
+            : '<li>No catalog items</li>'}
+        </ul>
+        <div class="store-tier-card__actions">`;
+
+      if (isGuest) {
+        html += `<p class="store-tier-card__free">Free — no subscription needed</p>`;
+      } else {
+        html += `<button type="button" class="store-btn" data-subscribe-tier="${tier.id}" data-period="monthly"
+            ${isActive && playerState.commerce.subscriptionPeriod === 'monthly' ? 'disabled' : ''}>
+            Subscribe monthly
+          </button>
+          <button type="button" class="store-btn store-btn--secondary" data-subscribe-tier="${tier.id}" data-period="yearly"
+            ${isActive && playerState.commerce.subscriptionPeriod === 'yearly' ? 'disabled' : ''}>
+            Subscribe yearly
+          </button>`;
+      }
+
+      html += `</div></div>`;
+    }
+
+    html += `</div></section>`;
 
     for (const typeKey of typeKeys) {
       const typeInfo = contentTypes[typeKey];
@@ -363,36 +494,7 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
       html += `</section>`;
     }
 
-    html += `<section class="store-section">
-      <h3 class="store-section__title">Memberships</h3>`;
-
-    for (const tier of tiers) {
-      if (tier.id === 'guest') continue;
-
-      const isActive = playerState.commerce.activeTierId === tier.id;
-      html += `<div class="store-tier" data-tier-id="${tier.id}">
-        <div class="store-item__info">
-          <div class="store-item__title">${tier.name}</div>
-          <ul class="store-tier__perks">${tier.perks.map((p) => `<li>${p}</li>`).join('')}</ul>
-        </div>
-        <div class="store-tier__pricing">
-          ${isActive ? '<span class="store-badge store-badge--active">Active tier</span>' : ''}
-          <span class="store-price">${formatPrice(tier.monthlyPrice)}/mo</span>
-          <span class="store-price">${formatPrice(tier.yearlyPrice)}/yr</span>
-          <button type="button" class="store-btn" data-subscribe-tier="${tier.id}" data-period="monthly"
-            ${isActive && playerState.commerce.subscriptionPeriod === 'monthly' ? 'disabled' : ''}>
-            Subscribe monthly
-          </button>
-          <button type="button" class="store-btn store-btn--secondary" data-subscribe-tier="${tier.id}" data-period="yearly"
-            ${isActive && playerState.commerce.subscriptionPeriod === 'yearly' ? 'disabled' : ''}>
-            Subscribe yearly
-          </button>
-        </div>
-      </div>`;
-    }
-
-    html += `</section>
-      <p class="store-note">Prices are placeholder examples — simulated purchases only.</p>`;
+    html += `<p class="store-note">Prices are placeholder examples — simulated purchases only.</p>`;
 
     body.innerHTML = html;
   }
