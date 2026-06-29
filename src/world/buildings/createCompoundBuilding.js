@@ -133,6 +133,7 @@ export function createCompoundBuilding(opts) {
   const glassGroup = new THREE.Group();
   const furnitureGroup = new THREE.Group();
   const lightsGroup = new THREE.Group();
+  const facadeGroup = new THREE.Group();
   const localColliders = [];
 
   const byWall = { south: [], north: [], east: [], west: [] };
@@ -195,6 +196,7 @@ export function createCompoundBuilding(opts) {
   shellGroup.add(roof);
 
   if (facade) {
+    const mainDoor = exteriorDoors.find((d) => d.wall === (facade.wall ?? 'south'));
     buildClassicalFacade({
       wall: facade.wall ?? 'south',
       halfW,
@@ -202,8 +204,11 @@ export function createCompoundBuilding(opts) {
       totalHeight,
       storyHeight,
       palette,
-      shellGroup,
-      config: facade,
+      facadeGroup,
+      config: {
+        ...facade,
+        doorClearWidth: facade.doorClearWidth ?? (mainDoor?.width ?? 3.6) + 0.6,
+      },
     });
   } else {
     const portico = exteriorDoors.find((d) => d.wall === 'south');
@@ -230,6 +235,7 @@ export function createCompoundBuilding(opts) {
   root.add(glassGroup);
   root.add(furnitureGroup);
   root.add(lightsGroup);
+  root.add(facadeGroup);
 
   const worldBoxes = localColliders.map((box) => ({
     minX: position.x + box.minX,

@@ -35,18 +35,19 @@ export const LIBRARY_PALETTE = {
 export const LIBRARY_FACADE = {
   wall: 'south',
   bayWidth: 14,
-  bayProjection: 2.8,
-  columnCount: 6,
-  columnRadius: 0.32,
+  bayProjection: 0.45,
+  columnCount: 4,
+  columnRadius: 0.26,
   columnHeight: 6.8,
-  pedimentHeight: 1.6,
-  entablatureHeight: 0.5,
+  pedimentHeight: 1.35,
+  entablatureHeight: 0.48,
   stepCount: 4,
-  stepDepth: 0.55,
-  stepRise: 0.18,
-  corniceHeight: 0.3,
-  roofOverhang: 1.4,
-  wingSetback: 5.5,
+  stepDepth: 0.48,
+  stepRise: 0.16,
+  corniceHeight: 0.26,
+  roofOverhang: 1.2,
+  doorClearWidth: 4.2,
+  columnGapFromDoor: 0.55,
 };
 
 // ── Ceiling beams (heavy timber, vaulted feel) ──
@@ -87,13 +88,15 @@ export function createLibraryOpts(area) {
       {
         wall: 'south',
         width: 3.6,
-        height: 3.2,
+        height: 3.4,
         offset: 0,
         bottom: 0,
       },
     ],
 
     exteriorWindows: [
+      { wall: 'south', width: 2.0, height: 5.2, offset: -8.5, sill: 0.9, arched: true },
+      { wall: 'south', width: 2.0, height: 5.2, offset: 8.5, sill: 0.9, arched: true },
       { wall: 'north', width: 2.2, height: 5.8, offset: -9, sill: 0.8, arched: true },
       { wall: 'north', width: 2.2, height: 5.8, offset: 0, sill: 0.8, arched: true },
       { wall: 'north', width: 2.2, height: 5.8, offset: 9, sill: 0.8, arched: true },
