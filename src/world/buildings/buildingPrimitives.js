@@ -427,6 +427,54 @@ export function buildStairMesh(stair, storyHeight, palette, group) {
   buildStairFlight(stair.minX, stair.maxX, stair.minZ, stair.maxZ, 0, storyHeight, palette, group);
 }
 
+/**
+ * A single straight flight that rises from its SOUTH edge (maxZ, floor level) to
+ * its NORTH edge (minZ, +storyHeight) — matching the straight stairFloorY handler.
+ * Solid blocky treads with an open sloped banister + balusters on each side.
+ */
+export function buildStraightStair(rect, storyHeight, palette, group, opts = {}) {
+  const { minX, maxX, minZ, maxZ } = rect;
+  const w = maxX - minX;
+  const d = maxZ - minZ;
+  const steps = opts.steps ?? 14;
+  const stepH = storyHeight / steps;
+  const stepD = d / steps;
+  const cx = (minX + maxX) / 2;
+  const woodM = woodMat(palette);
+
+  // Solid steps: each tread is a full block from the floor up to its tread height
+  // (closed risers), low at the front (maxZ) climbing to the rear (minZ).
+  for (let i = 0; i < steps; i++) {
+    const h = stepH * (i + 1);
+    const tread = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(w, h, stepD * 0.99), woodM));
+    tread.position.set(cx, h / 2, maxZ - stepD * i - stepD / 2);
+    group.add(tread);
+  }
+
+  // Sloped handrail + balusters down each side (visual railing, follows the slope).
+  const railH = opts.railHeight ?? 0.95;
+  const angle = Math.atan2(storyHeight, d);
+  const railLen = Math.hypot(d, storyHeight);
+  const balCount = opts.balusters ?? Math.max(4, Math.round(d / 1.4));
+  const railMat = woodMat(palette);
+
+  for (const sx of [minX + 0.07, maxX - 0.07]) {
+    const handrail = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.1, railLen), railMat));
+    handrail.position.set(sx, railH + storyHeight / 2, (minZ + maxZ) / 2);
+    handrail.rotation.x = angle;
+    group.add(handrail);
+
+    for (let b = 0; b <= balCount; b++) {
+      const t = b / balCount;
+      const z = maxZ - t * d;
+      const yBase = t * storyHeight;
+      const bal = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.05, railH, 0.05), railMat));
+      bal.position.set(sx, yBase + railH / 2, z);
+      group.add(bal);
+    }
+  }
+}
+
 export function buildSplitStairMesh(split, storyHeight, palette, group) {
   const { main, left, right, landingY } = split;
   buildStairFlight(main.minX, main.maxX, main.minZ, main.maxZ, 0, landingY, palette, group);
