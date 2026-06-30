@@ -125,26 +125,66 @@ export function archedCrownY(bottom, top, width) {
   return Math.min(springY + width / 2, top);
 }
 
-/** Half-width of the arch opening at height h above the spring line. */
-function archHalfWidthAt(radius, h) {
-  return Math.sqrt(Math.max(0, radius * radius - h * h));
+function leftSpandrelShape(edge, cx, springY, radius) {
+  const crownY = springY + radius;
+  const shape = new THREE.Shape();
+  shape.moveTo(edge, springY);
+  shape.lineTo(edge, crownY);
+  shape.lineTo(cx, crownY);
+  shape.absarc(cx, springY, radius, Math.PI / 2, Math.PI, false);
+  return shape;
 }
 
-/** Fill triangular spandrels beside the arch so the upper corners are not open voids. */
-function addArchSpandrels(addSegment, left, right, springY, radius) {
+function rightSpandrelShape(edge, cx, springY, radius) {
+  const crownY = springY + radius;
+  const shape = new THREE.Shape();
+  shape.moveTo(edge, springY);
+  shape.lineTo(edge, crownY);
+  shape.lineTo(cx, crownY);
+  shape.absarc(cx, springY, radius, Math.PI / 2, 0, true);
+  return shape;
+}
+
+/** Smooth curved spandrels (replaces stepped box slices that serrated the arch inner edge). */
+function addSmoothArchSpandrelsOnX(
+  shellGroup, linerGroup, left, right, springY, radius, z, thickness, shellM, linerM, inset,
+) {
   const cx = (left + right) / 2;
-  const slices = 8;
-  for (let i = 0; i < slices; i++) {
-    const h0 = (i / slices) * radius;
-    const h1 = ((i + 1) / slices) * radius;
-    const hm = (h0 + h1) / 2;
-    const halfOpen = archHalfWidthAt(radius, hm);
-    const y0 = springY + h0;
-    const y1 = springY + h1;
-    const leftEdge = cx - halfOpen;
-    const rightEdge = cx + halfOpen;
-    if (leftEdge - left > 0.02) addSegment(left, leftEdge, y0, y1);
-    if (right - rightEdge > 0.02) addSegment(rightEdge, right, y0, y1);
+  for (const shape of [leftSpandrelShape(left, cx, springY, radius), rightSpandrelShape(right, cx, springY, radius)]) {
+    const shellGeo = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
+    shellGeo.translate(0, 0, -thickness / 2);
+    const shell = addShadowed(new THREE.Mesh(shellGeo, shellM));
+    shell.position.set(0, 0, z);
+    shellGroup.add(shell);
+
+    const linerDepth = thickness * 0.6;
+    const linerGeo = new THREE.ExtrudeGeometry(shape, { depth: linerDepth, bevelEnabled: false });
+    linerGeo.translate(0, 0, -linerDepth / 2);
+    const liner = addShadowed(new THREE.Mesh(linerGeo, linerM));
+    liner.position.set(0, 0, z - inset);
+    linerGroup.add(liner);
+  }
+}
+
+function addSmoothArchSpandrelsOnZ(
+  shellGroup, linerGroup, left, right, springY, radius, x, thickness, shellM, linerM, inset,
+) {
+  const cx = (left + right) / 2;
+  for (const shape of [leftSpandrelShape(left, cx, springY, radius), rightSpandrelShape(right, cx, springY, radius)]) {
+    const shellGeo = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
+    shellGeo.rotateY(-Math.PI / 2);
+    shellGeo.translate(thickness / 2, 0, 0);
+    const shell = addShadowed(new THREE.Mesh(shellGeo, shellM));
+    shell.position.set(x, 0, 0);
+    shellGroup.add(shell);
+
+    const linerDepth = thickness * 0.6;
+    const linerGeo = new THREE.ExtrudeGeometry(shape, { depth: linerDepth, bevelEnabled: false });
+    linerGeo.rotateY(-Math.PI / 2);
+    linerGeo.translate(linerDepth / 2, 0, 0);
+    const liner = addShadowed(new THREE.Mesh(linerGeo, linerM));
+    liner.position.set(x - inset, 0, 0);
+    linerGroup.add(liner);
   }
 }
 
@@ -309,7 +349,9 @@ export function buildWallSegmentsAlongX(
       const crownY = archedCrownY(rect.bottom, rect.top, w);
       if (crownY < yBase + wallH) addSegment(rect.left, rect.right, crownY, yBase + wallH);
       if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
-      addArchSpandrels(addSegment, rect.left, rect.right, springY, w / 2);
+      addSmoothArchSpandrelsOnX(
+        shellGroup, linerGroup, rect.left, rect.right, springY, w / 2, z, thickness, shellM, linerM, inset,
+      );
     } else {
       if (rect.top < yBase + wallH) addSegment(rect.left, rect.right, rect.top, yBase + wallH);
       if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
@@ -390,7 +432,9 @@ export function buildWallSegmentsAlongZ(
       const crownY = archedCrownY(rect.bottom, rect.top, w);
       if (crownY < yBase + wallH) addSegment(rect.left, rect.right, crownY, yBase + wallH);
       if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
-      addArchSpandrels(addSegment, rect.left, rect.right, springY, w / 2);
+      addSmoothArchSpandrelsOnZ(
+        shellGroup, linerGroup, rect.left, rect.right, springY, w / 2, x, thickness, shellM, linerM, inset,
+      );
     } else {
       if (rect.top < yBase + wallH) addSegment(rect.left, rect.right, rect.top, yBase + wallH);
       if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
