@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-30 (arch spandrel fill)
+**Last updated:** 2026-06-30 (library windows lowered 20cm)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-30 — Library windows lowered 20 cm (sill 0.6 m, height 3.2 m) so arches still reach just under ceiling rims
 - 2026-06-30 — Fill arch spandrels above spring line to close corner holes while keeping arch centre open
 - 2026-06-30 — Library window arches: wall opening cut to arch crown (top no longer sealed); full frame trim (sill + jambs + arch crown)
 - 2026-06-30 — Rework library window arches: single semicircular stone trim + sill per opening (no jambs/torus blobs); width-matched spring line; torus glass arch replaces cone
