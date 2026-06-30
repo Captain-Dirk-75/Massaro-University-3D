@@ -240,7 +240,7 @@ async function bootstrap() {
     scene: outdoorScene,
     camera,
     render: () => {
-      outdoorComposer.render();
+      outdoorComposer.composer.render();
       hud.setPerfStats({
         fps: lastFps,
         drawCalls: renderer.info.render.calls,
