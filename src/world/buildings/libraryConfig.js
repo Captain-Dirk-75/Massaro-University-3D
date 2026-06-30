@@ -51,7 +51,7 @@ export const LIBRARY_UPPER_DOOR_Z = -7;   // gallery → upper-room doorway (rea
 // ── Double-height hall void (hole in floor-0 ceiling + floor-1 deck) ──
 //    Open the whole front of the hall to full height; the walkable gallery is
 //    the rear (north) walkway plus the two side staircases that climb to it.
-export const LIBRARY_HALL_VOID = { minX: -5.5, maxX: 5.5, minZ: -3.0, maxZ: 9.65 };
+export const LIBRARY_HALL_VOID = { minX: -5.5, maxX: 5.5, minZ: -2.8, maxZ: 9.65 };
 
 // ── TWO matching straight staircases (foyer-style) ──
 //    One hugs the WEST hall wall, one the EAST, symmetric. Each is a single
@@ -102,6 +102,7 @@ export const LIBRARY_PALETTE = {
   emissive: 0xffe8c8,
   emissiveIntensity: 0.14,
   roof: 0x6a5a4a,
+  serviceDesk: 0xc8a882,
 };
 
 // ── Classical entrance facade (decoration only — see classicalFacade.js) ──
@@ -129,8 +130,8 @@ export const LIBRARY_FACADE = {
 // ── Heavy timber ceiling beams (grand vaulted feel, top ceiling only) ──
 export const LIBRARY_CEILING_BEAMS = 5;
 
-// ── Reception desk — rear-left of the hall, far from door + stair feet ──
-export const LIBRARY_RECEPTION = { x: -3.5, z: -1.5, floor: 0 };
+// ── Service / help desk — half-round counter centred between the two staircases ──
+export const LIBRARY_SERVICE_DESK = { x: 0, z: 3.5, floor: 0 };
 
 // ── Membership-gated section: the upper-floor west archive ──
 //    Evaluated live by sectionGates.js against the existing access system.
@@ -220,14 +221,18 @@ export function createLibraryOpts(area) {
     ],
 
     floorPads: [
-      { floor: 1, minX: -STAIR_OUTER_X, maxX: -LIBRARY_STAIR_VOID_GAP_X, minZ: -3.8, maxZ: -2.0 },
-      { floor: 1, minX: LIBRARY_STAIR_VOID_GAP_X, maxX: STAIR_OUTER_X, minZ: -3.8, maxZ: -2.0 },
+      // North gallery walkway (floor 1 deck over the void edge)
+      { floor: 1, minX: -5.5, maxX: 5.5, minZ: -9.65, maxZ: -2.8 },
+      // Stair top landings continuing into the gallery + side-room approach
+      { floor: 1, minX: -STAIR_OUTER_X, maxX: -LIBRARY_STAIR_VOID_GAP_X, minZ: -9.65, maxZ: -2.0 },
+      { floor: 1, minX: LIBRARY_STAIR_VOID_GAP_X, maxX: STAIR_OUTER_X, minZ: -9.65, maxZ: -2.0 },
     ],
 
     // ── Rear gallery railing along the void edge (collides on the upper level);
     //    the staircases carry their own banisters down each side ──
     galleryRailings: [
-      { minX: -5.5, maxX: 5.5, minZ: -3.1, maxZ: -3.0 },
+      { minX: -5.5, maxX: -2.0, minZ: -2.9, maxZ: -2.8 },
+      { minX: 2.0, maxX: 5.5, minZ: -2.9, maxZ: -2.8 },
     ],
 
     gates: [LIBRARY_GATED_SECTION],
@@ -258,13 +263,7 @@ export function createLibraryOpts(area) {
 
     // ── Light, sensible furnishing — nothing in doorways, stairs, or paths ──
     furniture: [
-      { type: 'reception', x: LIBRARY_RECEPTION.x, z: LIBRARY_RECEPTION.z, floor: LIBRARY_RECEPTION.floor },
-
-      // Hall: bookshelves on the rear wall only (no tables near stair feet)
-      { type: 'bookshelf', x: -6.5, z: -9.0, floor: 0 },
-      { type: 'bookshelf', x: -2.2, z: -9.0, floor: 0 },
-      { type: 'bookshelf', x: 2.2, z: -9.0, floor: 0 },
-      { type: 'bookshelf', x: 6.5, z: -9.0, floor: 0 },
+      { type: 'serviceDesk', x: LIBRARY_SERVICE_DESK.x, z: LIBRARY_SERVICE_DESK.z, floor: LIBRARY_SERVICE_DESK.floor },
 
       // West reading room (ground)
       { type: 'bookshelf', x: -14.6, z: -3, floor: 0 },

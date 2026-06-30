@@ -93,6 +93,28 @@ function buildPlaceholderFurniture(type, x, z, floorY, level, palette, group, co
       group.add(desk);
       colliderBoxes.push({ minX: x - 1.45, maxX: x + 1.45, minZ: z - 0.55, maxZ: z + 0.55, level });
     },
+    serviceDesk: () => {
+      const radius = 1.35;
+      const height = 1.05;
+      const deskColor = palette.serviceDesk ?? 0xc8a882;
+      const mat = new THREE.MeshStandardMaterial({ color: deskColor, roughness: 0.78, metalness: 0.02 });
+      const desk = addShadowed(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(radius, radius, height, 20, 1, false, 0, Math.PI),
+          mat,
+        ),
+      );
+      desk.position.set(x, floorY + height / 2, z);
+      desk.rotation.y = Math.PI / 2;
+      group.add(desk);
+      colliderBoxes.push({
+        minX: x - 0.45,
+        maxX: x + 0.45,
+        minZ: z - radius,
+        maxZ: z - 0.2,
+        level,
+      });
+    },
   };
   items[type]?.();
 }

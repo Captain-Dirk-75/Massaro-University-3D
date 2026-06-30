@@ -192,7 +192,7 @@ async function bootstrap() {
         return interiorManager.resolveFloorY(x, z);
       }
       for (const building of unifiedBuildings) {
-        const y = building.getFloorY(x, z);
+        const y = building.getFloorY(x, z, currentY);
         if (y != null) return y;
       }
       return 0;

@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-30 (library playtest fixes: doorway, stairs, landings)
+**Last updated:** 2026-06-30 (library: service desk, upper-floor fix, gallery reachability)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-30 — Library reachability + desk: pass `currentY` into `getFloorY` (fixes upper floor / stair landing snap); half-round light-brown service desk between stairs; removed old reception + rear hall bookshelves blocking north path; extended floor-1 gallery pads + railing gaps
 - 2026-06-30 — Library playtest fixes: removed portico deck/steps/door arch blocking entrance; reception moved to rear hall; side-room doorways moved to z=-7 (rear, clear of stairs); removed hall tables at stair feet; fixed upper-floor snap on stair tops (hall void only falls through); partition colliders `all`; upper landing floor pads
 - 2026-06-30 — Library staircase replaced + entrance cleared: removed the central split-and-return stair; added TWO symmetric straight side staircases (foyer-style) hugging the west/east hall walls, each a single straight flight from the front floor 0 up to the rear gallery walkway, with sloped banisters and straight-run floor handling (new `buildStraightStair` + `straightStairs` option, not the split handler); reception desk moved front-right, fully clear of the door and walk-in path; hall void opened to the south for a taller foyer; chandeliers kept over the void only (never over the walkable gallery)
 - 2026-06-30 — Library interior rebuilt to a clean spec on the proven createCompoundBuilding system: entrance fully clear (stair foot moved 4.5 m back off the door centreline); deepened to 20 m for a grand double-height hall; free-standing split staircase rises centrally and splits to a gallery ring with railings; tall chandeliers (~4.6 m clearance) + 3 m wall sconces so the player never meets a lamp; logical bays (hall + 2 ground reading rooms + gallery + upper reading room + gated upper archive) via real per-floor doorways; fixed collider-level classification so ground-floor interior walls/furniture actually collide; gated archive kept data-driven & live
