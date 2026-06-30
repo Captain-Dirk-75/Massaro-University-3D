@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export const GLASS_OPACITY = 0.18;
+export const GLASS_OPACITY = 0.198;
 export const LINER_INSET = 0.03;
 export const FLOOR_COLLIDER_MAX_Y = 0.15;
 export const GLASS_RENDER_ORDER = 2;

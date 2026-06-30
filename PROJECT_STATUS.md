@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-30 (smooth arch spandrels)
+**Last updated:** 2026-06-30 (building glass +10% opacity)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-30 — All building window glass +10% opacity (pavilion, library, exterior/interior glass materials)
 - 2026-06-30 — Smooth arch spandrels via extruded curves (fixes serrated inner window edge)
 - 2026-06-30 — Library window height back to 3.0 m (sill stays at 0.6 m)
 - 2026-06-30 — Library windows lowered 20 cm (sill 0.6 m, height 3.2 m) so arches still reach just under ceiling rims

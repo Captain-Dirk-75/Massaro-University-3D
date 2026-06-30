@@ -4,7 +4,7 @@ import * as THREE from 'three';
 export const EXTERIOR_GLASS_COLOR = 0xb8d4e8;
 export const EXTERIOR_GLASS_EMISSIVE = 0xffe8c8;
 export const EXTERIOR_GLASS_EMISSIVE_INTENSITY = 0.42;
-export const EXTERIOR_GLASS_OPACITY = 0.72;
+export const EXTERIOR_GLASS_OPACITY = 0.792;
 export const EXTERIOR_GLASS_ROUGHNESS = 0.14;
 export const EXTERIOR_GLASS_METALNESS = 0.08;
 
@@ -14,7 +14,7 @@ export const INTERIOR_SKY_MID = '#c8dff0';
 export const INTERIOR_HORIZON_WARM = '#f8e8c8';
 export const INTERIOR_GLASS_EMISSIVE = 0xfff0d8;
 export const INTERIOR_GLASS_EMISSIVE_INTENSITY = 0.38;
-export const INTERIOR_GLASS_OPACITY = 0.92;
+export const INTERIOR_GLASS_OPACITY = 1.0;
 
 let interiorDaylightTexture = null;
 

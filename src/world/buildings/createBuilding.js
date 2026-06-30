@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 // ── Tunable constants ──
-export const GLASS_OPACITY = 0.18;
+export const GLASS_OPACITY = 0.198;
 export const LINER_INSET = 0.03;
 export const INTERIOR_FLOOR_HEIGHT = 0.14;
 export const SHELL_COLOR = 0xd8d0c4;
