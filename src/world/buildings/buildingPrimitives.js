@@ -130,7 +130,7 @@ function addArchedGlass(glassGroup, cx, cy, cz, w, h, rotY) {
 
 export function buildWallSegmentsAlongX(
   z, halfW, yBase, wallH, thickness, openings, shellGroup, linerGroup, glassGroup,
-  colliderBoxes, sign, palette, colliderLevel = 'all', floorBase = 0,
+  colliderBoxes, sign, palette, colliderLevel = 'all', floorBase = 0, emitColliders = true,
 ) {
   const rects = openingsToRects(openings, wallH, floorBase).sort((a, b) => a.left - b.left);
   const shellM = shellMat(palette);
@@ -153,7 +153,7 @@ export function buildWallSegmentsAlongX(
     liner.position.set(cx, cy, z - inset);
     linerGroup.add(liner);
 
-    if (segmentTouchesFloor(y1, floorBase)) {
+    if (emitColliders && segmentTouchesFloor(y1, floorBase)) {
       colliderBoxes.push({
         minX: cx - w / 2,
         maxX: cx + w / 2,
@@ -194,7 +194,7 @@ export function buildWallSegmentsAlongX(
 
 export function buildWallSegmentsAlongZ(
   x, halfD, yBase, wallH, thickness, openings, shellGroup, linerGroup, glassGroup,
-  colliderBoxes, sign, palette, colliderLevel = 'all', floorBase = 0,
+  colliderBoxes, sign, palette, colliderLevel = 'all', floorBase = 0, emitColliders = true,
 ) {
   const rects = openingsToRects(openings, wallH, floorBase).sort((a, b) => a.left - b.left);
   const shellM = shellMat(palette);
@@ -217,7 +217,7 @@ export function buildWallSegmentsAlongZ(
     liner.position.set(x - inset, cy, cz);
     linerGroup.add(liner);
 
-    if (segmentTouchesFloor(y1, floorBase)) {
+    if (emitColliders && segmentTouchesFloor(y1, floorBase)) {
       colliderBoxes.push({
         minX: x - thickness / 2 - 0.05,
         maxX: x + thickness / 2 + 0.05,

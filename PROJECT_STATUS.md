@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-30 (stillness pavilion roof + library symmetric windows)
+**Last updated:** 2026-06-30 (library entrance + per-floor windows fix)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-30 — Fix library entrance blocked by upper-floor south wall colliders; restore per-floor window sills (ground + upper pairs); door openings on every story; upper exterior walls skip ground colliders
 - 2026-06-30 — Stillness Pavilion roof aligned on all 4 posts; library portico entablature on column capitals; per-floor exterior walls with matched window pairs on every side
 - 2026-06-30 — Library moved 4 m south (z:-44, toward pond) so north interior stays inside world bounds; service desk +20% (`LIBRARY_SERVICE_DESK_SIZE`); stone approach/plaza paths + bird perches updated
 - 2026-06-30 — Library reachability + desk: pass `currentY` into `getFloorY` (fixes upper floor / stair landing snap); half-round light-brown service desk between stairs; removed old reception + rear hall bookshelves blocking north path; extended floor-1 gallery pads + railing gaps

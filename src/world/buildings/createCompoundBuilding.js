@@ -256,20 +256,21 @@ export function createCompoundBuilding(opts) {
     for (const win of exteriorWindows) {
       const winFloor = win.floor ?? (win.sill >= storyHeight ? 1 : 0);
       if (winFloor !== floorIndex) continue;
-      const sill = (win.sill ?? 0) - winFloor * storyHeight;
+      // sill is relative to the window's own floor (see libraryWindowPairs)
+      const sill = win.sill ?? win.bottom ?? 0;
       byWall[win.wall]?.push({ ...win, sill });
     }
 
-    if (floorIndex === 0) {
-      for (const door of exteriorDoors) {
-        byWall[door.wall]?.push({ ...door, sill: door.bottom ?? 0, isDoor: true });
-      }
+    // Door openings on every floor — upper story must not seal the entrance with a solid slab + collider
+    for (const door of exteriorDoors) {
+      byWall[door.wall]?.push({ ...door, sill: door.bottom ?? 0, isDoor: true });
     }
 
-    buildWallSegmentsAlongX(halfD, halfW, yBase, storyHeight, t, byWall.south, shellGroup, linerGroup, glassGroup, localColliders, 1, palette, 'all', yBase);
-    buildWallSegmentsAlongX(-halfD, halfW, yBase, storyHeight, t, byWall.north, shellGroup, linerGroup, glassGroup, localColliders, -1, palette, 'all', yBase);
-    buildWallSegmentsAlongZ(halfW, halfD, yBase, storyHeight, t, byWall.east, shellGroup, linerGroup, glassGroup, localColliders, 1, palette, 'all', yBase);
-    buildWallSegmentsAlongZ(-halfW, halfD, yBase, storyHeight, t, byWall.west, shellGroup, linerGroup, glassGroup, localColliders, -1, palette, 'all', yBase);
+    const exteriorColliders = floorIndex === 0;
+    buildWallSegmentsAlongX(halfD, halfW, yBase, storyHeight, t, byWall.south, shellGroup, linerGroup, glassGroup, localColliders, 1, palette, 'all', yBase, exteriorColliders);
+    buildWallSegmentsAlongX(-halfD, halfW, yBase, storyHeight, t, byWall.north, shellGroup, linerGroup, glassGroup, localColliders, -1, palette, 'all', yBase, exteriorColliders);
+    buildWallSegmentsAlongZ(halfW, halfD, yBase, storyHeight, t, byWall.east, shellGroup, linerGroup, glassGroup, localColliders, 1, palette, 'all', yBase, exteriorColliders);
+    buildWallSegmentsAlongZ(-halfW, halfD, yBase, storyHeight, t, byWall.west, shellGroup, linerGroup, glassGroup, localColliders, -1, palette, 'all', yBase, exteriorColliders);
   }
 
   for (const partition of partitions) {
