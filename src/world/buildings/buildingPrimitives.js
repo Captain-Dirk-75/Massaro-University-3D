@@ -125,6 +125,29 @@ export function archedCrownY(bottom, top, width) {
   return Math.min(springY + width / 2, top);
 }
 
+/** Half-width of the arch opening at height h above the spring line. */
+function archHalfWidthAt(radius, h) {
+  return Math.sqrt(Math.max(0, radius * radius - h * h));
+}
+
+/** Fill triangular spandrels beside the arch so the upper corners are not open voids. */
+function addArchSpandrels(addSegment, left, right, springY, radius) {
+  const cx = (left + right) / 2;
+  const slices = 8;
+  for (let i = 0; i < slices; i++) {
+    const h0 = (i / slices) * radius;
+    const h1 = ((i + 1) / slices) * radius;
+    const hm = (h0 + h1) / 2;
+    const halfOpen = archHalfWidthAt(radius, hm);
+    const y0 = springY + h0;
+    const y1 = springY + h1;
+    const leftEdge = cx - halfOpen;
+    const rightEdge = cx + halfOpen;
+    if (leftEdge - left > 0.02) addSegment(left, leftEdge, y0, y1);
+    if (right - rightEdge > 0.02) addSegment(rightEdge, right, y0, y1);
+  }
+}
+
 function trimMat(palette) {
   return new THREE.MeshStandardMaterial({
     color: palette.facadeStone ?? palette.shell,
@@ -280,15 +303,22 @@ export function buildWallSegmentsAlongX(
 
   for (const rect of rects) {
     const w = rect.right - rect.left;
-    const springY = rect.arched ? archedSpringY(rect.bottom, rect.top, w) : null;
-    const openTop = rect.arched ? archedCrownY(rect.bottom, rect.top, w) : rect.top;
     if (rect.left > cursor) addSegment(cursor, rect.left, yBase, yBase + wallH);
-    if (openTop < yBase + wallH) addSegment(rect.left, rect.right, openTop, yBase + wallH);
-    if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
+    if (rect.arched) {
+      const springY = archedSpringY(rect.bottom, rect.top, w);
+      const crownY = archedCrownY(rect.bottom, rect.top, w);
+      if (crownY < yBase + wallH) addSegment(rect.left, rect.right, crownY, yBase + wallH);
+      if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
+      addArchSpandrels(addSegment, rect.left, rect.right, springY, w / 2);
+    } else {
+      if (rect.top < yBase + wallH) addSegment(rect.left, rect.right, rect.top, yBase + wallH);
+      if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
+    }
     if (!rect.isDoor) {
       addGlass(rect);
       if (rect.arched) {
         const cx = (rect.left + rect.right) / 2;
+        const springY = archedSpringY(rect.bottom, rect.top, w);
         addArchedFrameOnX(shellGroup, cx, springY, rect.bottom, z, w, sign, palette);
       }
     }
@@ -354,15 +384,22 @@ export function buildWallSegmentsAlongZ(
 
   for (const rect of rects) {
     const w = rect.right - rect.left;
-    const springY = rect.arched ? archedSpringY(rect.bottom, rect.top, w) : null;
-    const openTop = rect.arched ? archedCrownY(rect.bottom, rect.top, w) : rect.top;
     if (rect.left > cursor) addSegment(cursor, rect.left, yBase, yBase + wallH);
-    if (openTop < yBase + wallH) addSegment(rect.left, rect.right, openTop, yBase + wallH);
-    if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
+    if (rect.arched) {
+      const springY = archedSpringY(rect.bottom, rect.top, w);
+      const crownY = archedCrownY(rect.bottom, rect.top, w);
+      if (crownY < yBase + wallH) addSegment(rect.left, rect.right, crownY, yBase + wallH);
+      if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
+      addArchSpandrels(addSegment, rect.left, rect.right, springY, w / 2);
+    } else {
+      if (rect.top < yBase + wallH) addSegment(rect.left, rect.right, rect.top, yBase + wallH);
+      if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
+    }
     if (!rect.isDoor) {
       addGlass(rect);
       if (rect.arched) {
         const cz = (rect.left + rect.right) / 2;
+        const springY = archedSpringY(rect.bottom, rect.top, w);
         addArchedFrameOnZ(shellGroup, x, springY, rect.bottom, cz, w, sign, palette);
       }
     }
