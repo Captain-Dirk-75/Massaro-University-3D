@@ -38,7 +38,7 @@ export const LIBRARY_CAMPUS_POSITION = { x: 0, y: 0, z: -44 };
 // ── Building shell (exterior facade / windows use these) ──
 export const LIBRARY_WIDTH = 32;          // x ∈ [−16, 16]
 export const LIBRARY_DEPTH = 20;          // z ∈ [−10, 10]  (deepened for a grand hall)
-export const LIBRARY_STORY_HEIGHT = 4.0;  // → 8.0 m double-height hall
+export const LIBRARY_STORY_HEIGHT = 4.2;  // → 8.4 m double-height hall
 export const LIBRARY_FLOOR_COUNT = 2;
 export const LIBRARY_WALL_THICKNESS = 0.35;
 export const LIBRARY_FLOOR_HEIGHT = 0.14;
@@ -80,7 +80,7 @@ const STAIR_HOLES = [
 ];
 
 // ── Lighting — everything hangs HIGH; the player never meets a lamp ──
-//    Chandeliers drop from the 8.0 m grand ceiling (shades ~4.6 m up) and sit
+//    Chandeliers drop from the 8.4 m grand ceiling (shades ~4.6 m up) and sit
 //    only over the double-height void, never over the walkable rear gallery.
 export const LIBRARY_CHANDELIERS = [
   { x: 0, z: 6.0, cordLength: 2.6, fromY: 'total' },
@@ -130,7 +130,7 @@ export const LIBRARY_FACADE = {
   bayProjection: 0.45,
   columnCount: 4,
   columnRadius: 0.28,
-  columnHeight: 7.2,
+  columnHeight: 7.6,
   pedimentHeight: 1.4,
   entablatureHeight: 0.5,
   stepCount: 4,
