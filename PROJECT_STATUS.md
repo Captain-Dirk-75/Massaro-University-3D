@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-30 — Stillness Pavilion roof aligned on all 4 posts; library portico entablature on column capitals; per-floor exterior walls with matched window pairs on every side
 - 2026-06-30 — Library moved 4 m south (z:-44, toward pond) so north interior stays inside world bounds; service desk +20% (`LIBRARY_SERVICE_DESK_SIZE`); stone approach/plaza paths + bird perches updated
 - 2026-06-30 — Library reachability + desk: pass `currentY` into `getFloorY` (fixes upper floor / stair landing snap); half-round light-brown service desk between stairs; removed old reception + rear hall bookshelves blocking north path; extended floor-1 gallery pads + railing gaps
 - 2026-06-30 — Library playtest fixes: removed portico deck/steps/door arch blocking entrance; reception moved to rear hall; side-room doorways moved to z=-7 (rear, clear of stairs); removed hall tables at stair feet; fixed upper-floor snap on stair tops (hall void only falls through); partition colliders `all`; upper landing floor pads
