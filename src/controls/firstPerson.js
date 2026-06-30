@@ -73,7 +73,7 @@ export function createFirstPersonControls(camera, canvas, { onLockChange, collid
     const floorY = getFloorY
       ? getFloorY(camera.position.x, camera.position.z, camera.position.y)
       : 0;
-    const storyHeight = 4.0;
+    const storyHeight = 4.2;
     const onStair =
       floorY > STAIR_SNAP_LOW && floorY < storyHeight - STAIR_SNAP_HIGH_OFFSET;
     const floorLevel = onStair ? 'stair' : floorY >= 3.0 ? 'upper' : 'ground';

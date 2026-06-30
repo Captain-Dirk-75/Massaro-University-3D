@@ -25,7 +25,7 @@
  *        SOUTH  (z = +10, entrance)
  *
  * Campus position lives in src/content/campus.js (library entry) — keep in sync:
- *   position { x: 0, y: 0, z: -48 }, footprint { width: 32, depth: 20 }
+ *   position { x: 0, y: 0, z: -44 }, footprint { width: 32, depth: 20 }
  */
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -33,25 +33,25 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 // ── Campus placement (mirror of campus.js — update both together) ──
-export const LIBRARY_CAMPUS_POSITION = { x: 0, y: 0, z: -48 };
+export const LIBRARY_CAMPUS_POSITION = { x: 0, y: 0, z: -44 };
 
 // ── Building shell (exterior facade / windows use these) ──
 export const LIBRARY_WIDTH = 32;          // x ∈ [−16, 16]
 export const LIBRARY_DEPTH = 20;          // z ∈ [−10, 10]  (deepened for a grand hall)
-export const LIBRARY_STORY_HEIGHT = 4.0;  // → 8.0 m double-height hall
+export const LIBRARY_STORY_HEIGHT = 4.2;  // → 8.4 m double-height hall
 export const LIBRARY_FLOOR_COUNT = 2;
 export const LIBRARY_WALL_THICKNESS = 0.35;
 export const LIBRARY_FLOOR_HEIGHT = 0.14;
 
 // ── Bay layout: two side bays split off a wide central hall ──
 export const LIBRARY_PARTITION_X = 8;     // interior walls at x = ±8
-export const LIBRARY_GROUND_DOOR_Z = 3;   // hall → side-room doorway (front third)
-export const LIBRARY_UPPER_DOOR_Z = -6;   // gallery → upper-room doorway (rear)
+export const LIBRARY_GROUND_DOOR_Z = -7;  // rear doorway — clear of both stair flights
+export const LIBRARY_UPPER_DOOR_Z = -7;   // gallery → upper-room doorway (rear, aligned)
 
 // ── Double-height hall void (hole in floor-0 ceiling + floor-1 deck) ──
 //    Open the whole front of the hall to full height; the walkable gallery is
 //    the rear (north) walkway plus the two side staircases that climb to it.
-export const LIBRARY_HALL_VOID = { minX: -5.5, maxX: 5.5, minZ: -3.0, maxZ: 9.65 };
+export const LIBRARY_HALL_VOID = { minX: -5.5, maxX: 5.5, minZ: -2.8, maxZ: 9.65 };
 
 // ── TWO matching straight staircases (foyer-style) ──
 //    One hugs the WEST hall wall, one the EAST, symmetric. Each is a single
@@ -80,7 +80,7 @@ const STAIR_HOLES = [
 ];
 
 // ── Lighting — everything hangs HIGH; the player never meets a lamp ──
-//    Chandeliers drop from the 8.0 m grand ceiling (shades ~4.6 m up) and sit
+//    Chandeliers drop from the 8.4 m grand ceiling (shades ~4.6 m up) and sit
 //    only over the double-height void, never over the walkable rear gallery.
 export const LIBRARY_CHANDELIERS = [
   { x: 0, z: 6.0, cordLength: 2.6, fromY: 'total' },
@@ -102,7 +102,26 @@ export const LIBRARY_PALETTE = {
   emissive: 0xffe8c8,
   emissiveIntensity: 0.14,
   roof: 0x6a5a4a,
+  serviceDesk: 0xc8a882,
 };
+
+// ── Exterior windows — matched pairs per floor (ground + upper, same height) ──
+// Sill lowered 20 cm from the original 0.8 m.
+export const LIBRARY_WINDOW_HEIGHT = 3.0;
+export const LIBRARY_WINDOW_SILL = 0.6;
+
+function libraryWindowPairs(wall, width, offsets, arched = true) {
+  const windows = [];
+  for (const offset of offsets) {
+    for (let floor = 0; floor < LIBRARY_FLOOR_COUNT; floor++) {
+      windows.push({
+        wall, floor, width, height: LIBRARY_WINDOW_HEIGHT, offset,
+        sill: LIBRARY_WINDOW_SILL, arched,
+      });
+    }
+  }
+  return windows;
+}
 
 // ── Classical entrance facade (decoration only — see classicalFacade.js) ──
 export const LIBRARY_FACADE = {
@@ -111,7 +130,7 @@ export const LIBRARY_FACADE = {
   bayProjection: 0.45,
   columnCount: 4,
   columnRadius: 0.28,
-  columnHeight: 7.2,
+  columnHeight: 7.6,
   pedimentHeight: 1.4,
   entablatureHeight: 0.5,
   stepCount: 4,
@@ -121,14 +140,24 @@ export const LIBRARY_FACADE = {
   roofOverhang: 1.2,
   doorClearWidth: 4.2,
   columnGapFromDoor: 0.55,
+  doorTrim: false,
+  exteriorSteps: false,
+  porticoDeck: false,
 };
 
 // ── Heavy timber ceiling beams (grand vaulted feel, top ceiling only) ──
 export const LIBRARY_CEILING_BEAMS = 5;
 
-// ── Reception desk — front-RIGHT of the hall, well off the door + walk-in path
-//    (door is x∈[-1.8,1.8]; desk clears it and the east staircase) ──
-export const LIBRARY_RECEPTION = { x: 3.5, z: 8.5, floor: 0 };
+// ── Reception desk — curved counter centred in the grand hall (faces the entrance) ──
+export const LIBRARY_RECEPTION_DESK = {
+  x: 0,
+  z: 4.0,
+  floor: 0,
+  width: 4.6,
+  height: 1.05,
+  depth: 1.45,
+  faceZ: 1,
+};
 
 // ── Membership-gated section: the upper-floor west archive ──
 //    Evaluated live by sectionGates.js against the existing access system.
@@ -171,32 +200,27 @@ export function createLibraryOpts(area) {
       { wall: 'south', width: 3.6, height: 3.4, offset: 0, bottom: 0 },
     ],
 
-    // ── See-through arched windows (unchanged glass system) ──
+    // ── See-through arched windows — symmetric ground + upper pairs on every wall ──
     exteriorWindows: [
-      { wall: 'south', width: 2.0, height: 5.2, offset: -9.5, sill: 0.9, arched: true },
-      { wall: 'south', width: 2.0, height: 5.2, offset: 9.5, sill: 0.9, arched: true },
-      { wall: 'north', width: 2.2, height: 5.8, offset: -11, sill: 0.8, arched: true },
-      { wall: 'north', width: 2.2, height: 5.8, offset: 0, sill: 0.8, arched: true },
-      { wall: 'north', width: 2.2, height: 5.8, offset: 11, sill: 0.8, arched: true },
-      { wall: 'east', width: 1.8, height: 4.8, offset: -6, sill: 1.0, arched: true },
-      { wall: 'east', width: 1.8, height: 4.8, offset: 0, sill: 1.0, arched: true },
-      { wall: 'east', width: 1.8, height: 4.8, offset: 6, sill: 1.0, arched: true },
-      { wall: 'west', width: 1.8, height: 4.8, offset: -6, sill: 1.0, arched: true },
-      { wall: 'west', width: 1.8, height: 4.8, offset: 0, sill: 1.0, arched: true },
-      { wall: 'west', width: 1.8, height: 4.8, offset: 6, sill: 1.0, arched: true },
+      ...libraryWindowPairs('south', 2.0, [-9.5, 9.5]),
+      ...libraryWindowPairs('north', 2.2, [-11, 0, 11]),
+      ...libraryWindowPairs('east', 1.8, [-6, 0, 6]),
+      ...libraryWindowPairs('west', 1.8, [-6, 0, 6]),
     ],
 
     // ── Solid interior walls splitting the side bays off the hall ──
     //    Spans are symmetric about z=0 (full depth) so the proven builder
     //    centres them correctly; each carries one real doorway opening.
+    hallVoid: LIBRARY_HALL_VOID,
+
     partitions: [
-      { axis: 'x', at: -px, spanMin, spanMax, floors: [0], colliderLevel: 'ground',
+      { axis: 'x', at: -px, spanMin, spanMax, floors: [0], colliderLevel: 'all',
         openings: [{ at: LIBRARY_GROUND_DOOR_Z, width: 2.8, height: 3.0, bottom: 0 }] },
-      { axis: 'x', at: px, spanMin, spanMax, floors: [0], colliderLevel: 'ground',
+      { axis: 'x', at: px, spanMin, spanMax, floors: [0], colliderLevel: 'all',
         openings: [{ at: LIBRARY_GROUND_DOOR_Z, width: 2.8, height: 3.0, bottom: 0 }] },
-      { axis: 'x', at: -px, spanMin, spanMax, floors: [1], colliderLevel: 'upper',
+      { axis: 'x', at: -px, spanMin, spanMax, floors: [1], colliderLevel: 'all',
         openings: [{ at: LIBRARY_UPPER_DOOR_Z, width: 2.6, height: 3.0, bottom: 0 }] },
-      { axis: 'x', at: px, spanMin, spanMax, floors: [1], colliderLevel: 'upper',
+      { axis: 'x', at: px, spanMin, spanMax, floors: [1], colliderLevel: 'all',
         openings: [{ at: LIBRARY_UPPER_DOOR_Z, width: 2.6, height: 3.0, bottom: 0 }] },
     ],
 
@@ -215,10 +239,19 @@ export function createLibraryOpts(area) {
       { floor: 0, ...STAIR_HOLES[1] },
     ],
 
+    floorPads: [
+      // North gallery walkway (floor 1 deck over the void edge)
+      { floor: 1, minX: -5.5, maxX: 5.5, minZ: -9.65, maxZ: -2.8 },
+      // Stair top landings continuing into the gallery + side-room approach
+      { floor: 1, minX: -STAIR_OUTER_X, maxX: -LIBRARY_STAIR_VOID_GAP_X, minZ: -9.65, maxZ: -2.0 },
+      { floor: 1, minX: LIBRARY_STAIR_VOID_GAP_X, maxX: STAIR_OUTER_X, minZ: -9.65, maxZ: -2.0 },
+    ],
+
     // ── Rear gallery railing along the void edge (collides on the upper level);
     //    the staircases carry their own banisters down each side ──
     galleryRailings: [
-      { minX: -5.5, maxX: 5.5, minZ: -3.1, maxZ: -3.0 },
+      { minX: -5.5, maxX: -2.0, minZ: -2.9, maxZ: -2.8 },
+      { minX: 2.0, maxX: 5.5, minZ: -2.9, maxZ: -2.8 },
     ],
 
     gates: [LIBRARY_GATED_SECTION],
@@ -249,18 +282,7 @@ export function createLibraryOpts(area) {
 
     // ── Light, sensible furnishing — nothing in doorways, stairs, or paths ──
     furniture: [
-      // Reception desk: front-left of the hall, clear of the centre walk-in path
-      { type: 'reception', x: LIBRARY_RECEPTION.x, z: LIBRARY_RECEPTION.z, floor: LIBRARY_RECEPTION.floor },
-
-      // Hall: a pair of reading tables flanking the entry, bookshelves on the rear wall
-      { type: 'table', x: -4.0, z: 6.5, floor: 0 },
-      { type: 'chair', x: -4.0, z: 7.3, floor: 0 },
-      { type: 'table', x: 4.0, z: 6.5, floor: 0 },
-      { type: 'chair', x: 4.0, z: 7.3, floor: 0 },
-      { type: 'bookshelf', x: -6.5, z: -9.0, floor: 0 },
-      { type: 'bookshelf', x: -2.2, z: -9.0, floor: 0 },
-      { type: 'bookshelf', x: 2.2, z: -9.0, floor: 0 },
-      { type: 'bookshelf', x: 6.5, z: -9.0, floor: 0 },
+      { type: 'reception', ...LIBRARY_RECEPTION_DESK },
 
       // West reading room (ground)
       { type: 'bookshelf', x: -14.6, z: -3, floor: 0 },

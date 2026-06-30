@@ -13,6 +13,7 @@ import {
   buildWallSegmentsAlongX,
   buildWallSegmentsAlongZ,
   createPalette,
+  floorMat,
   shellMat,
   woodMat,
 } from './buildingPrimitives.js';
@@ -66,7 +67,7 @@ function buildPartition(
   }
 }
 
-function buildPlaceholderFurniture(type, x, z, floorY, level, palette, group, colliderBoxes) {
+function buildPlaceholderFurniture(type, x, z, floorY, level, palette, group, colliderBoxes, opts = {}) {
   const items = {
     table: () => {
       const top = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.08, 0.95), woodMat(palette)));
@@ -87,10 +88,59 @@ function buildPlaceholderFurniture(type, x, z, floorY, level, palette, group, co
       colliderBoxes.push({ minX: x - 1.05, maxX: x + 1.05, minZ: z - 0.28, maxZ: z + 0.28, level });
     },
     reception: () => {
-      const desk = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.05, 0.9), woodMat(palette)));
-      desk.position.set(x, floorY + 0.52, z);
+      const wm = woodMat(palette);
+      const w = opts.width ?? 4.6;
+      const h = opts.height ?? 1.05;
+      const depth = opts.depth ?? 1.45;
+      const faceZ = opts.faceZ ?? 1;
+
+      const top = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(w, 0.14, depth), wm));
+      top.position.set(x, floorY + h + 0.03, z);
+      group.add(top);
+
+      const front = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.55), wm));
+      front.position.set(x, floorY + h / 2, z + faceZ * 0.38);
+      group.add(front);
+
+      const curve = addShadowed(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(w * 0.48, w * 0.48, h, 24, 1, false, 0, Math.PI),
+          wm,
+        ),
+      );
+      curve.position.set(x, floorY + h / 2, z - faceZ * 0.12);
+      curve.rotation.y = Math.PI / 2;
+      group.add(curve);
+
+      colliderBoxes.push({
+        minX: x - w / 2 - 0.15,
+        maxX: x + w / 2 + 0.15,
+        minZ: z - depth / 2 - 0.15,
+        maxZ: z + depth / 2 + 0.35,
+        level,
+      });
+    },
+    serviceDesk: () => {
+      const radius = opts.radius ?? 1.35;
+      const height = opts.height ?? 1.05;
+      const deskColor = palette.serviceDesk ?? 0xc8a882;
+      const mat = new THREE.MeshStandardMaterial({ color: deskColor, roughness: 0.78, metalness: 0.02 });
+      const desk = addShadowed(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(radius, radius, height, 20, 1, false, 0, Math.PI),
+          mat,
+        ),
+      );
+      desk.position.set(x, floorY + height / 2, z);
+      desk.rotation.y = Math.PI / 2;
       group.add(desk);
-      colliderBoxes.push({ minX: x - 1.45, maxX: x + 1.45, minZ: z - 0.55, maxZ: z + 0.55, level });
+      colliderBoxes.push({
+        minX: x - 0.45 * (radius / 1.35),
+        maxX: x + 0.45 * (radius / 1.35),
+        minZ: z - radius,
+        maxZ: z - 0.2,
+        level,
+      });
     },
   };
   items[type]?.();
@@ -202,6 +252,8 @@ export function createCompoundBuilding(opts) {
     furniture = [],
     ceilingBeams = 0,
     facade = null,
+    hallVoid = null,
+    floorPads = [],
   } = opts;
 
   const palette = createPalette(paletteOverrides);
@@ -224,16 +276,31 @@ export function createCompoundBuilding(opts) {
   const facadeGroup = new THREE.Group();
   const localColliders = [];
 
-  const byWall = { south: [], north: [], east: [], west: [] };
-  for (const win of exteriorWindows) byWall[win.wall]?.push(win);
-  for (const door of exteriorDoors) {
-    byWall[door.wall]?.push({ ...door, sill: door.bottom ?? 0, isDoor: true });
-  }
+  for (let floorIndex = 0; floorIndex < floorCount; floorIndex++) {
+    const yBase = floorIndex * storyHeight;
+    const byWall = { south: [], north: [], east: [], west: [] };
 
-  buildWallSegmentsAlongX(halfD, halfW, 0, totalHeight, t, byWall.south, shellGroup, linerGroup, glassGroup, localColliders, 1, palette);
-  buildWallSegmentsAlongX(-halfD, halfW, 0, totalHeight, t, byWall.north, shellGroup, linerGroup, glassGroup, localColliders, -1, palette);
-  buildWallSegmentsAlongZ(halfW, halfD, 0, totalHeight, t, byWall.east, shellGroup, linerGroup, glassGroup, localColliders, 1, palette);
-  buildWallSegmentsAlongZ(-halfW, halfD, 0, totalHeight, t, byWall.west, shellGroup, linerGroup, glassGroup, localColliders, -1, palette);
+    for (const win of exteriorWindows) {
+      const winFloor = win.floor ?? (win.sill >= storyHeight ? 1 : 0);
+      if (winFloor !== floorIndex) continue;
+      // sill is relative to the window's own floor (see libraryWindowPairs)
+      const sill = win.sill ?? win.bottom ?? 0;
+      byWall[win.wall]?.push({ ...win, sill });
+    }
+
+    // Ground-floor doors only — upper story stays solid above the entrance (no second opening)
+    if (floorIndex === 0) {
+      for (const door of exteriorDoors) {
+        byWall[door.wall]?.push({ ...door, sill: door.bottom ?? 0, isDoor: true });
+      }
+    }
+
+    const exteriorColliders = floorIndex === 0;
+    buildWallSegmentsAlongX(halfD, halfW, yBase, storyHeight, t, byWall.south, shellGroup, linerGroup, glassGroup, localColliders, 1, palette, 'all', yBase, exteriorColliders);
+    buildWallSegmentsAlongX(-halfD, halfW, yBase, storyHeight, t, byWall.north, shellGroup, linerGroup, glassGroup, localColliders, -1, palette, 'all', yBase, exteriorColliders);
+    buildWallSegmentsAlongZ(halfW, halfD, yBase, storyHeight, t, byWall.east, shellGroup, linerGroup, glassGroup, localColliders, 1, palette, 'all', yBase, exteriorColliders);
+    buildWallSegmentsAlongZ(-halfW, halfD, yBase, storyHeight, t, byWall.west, shellGroup, linerGroup, glassGroup, localColliders, -1, palette, 'all', yBase, exteriorColliders);
+  }
 
   for (const partition of partitions) {
     buildPartition(partition, storyHeight, t, shellGroup, linerGroup, glassGroup, localColliders, palette);
@@ -258,6 +325,21 @@ export function createCompoundBuilding(opts) {
     const floorY = floorIndex * storyHeight + floorHeight;
     const deckHoles = holesByFloor.get(floorIndex) ?? [];
     buildFloorDeck(insetW, insetD, floorY - floorHeight, floorHeight, deckHoles, palette, linerGroup);
+
+    for (const pad of floorPads.filter((p) => p.floor === floorIndex)) {
+      const pw = pad.maxX - pad.minX;
+      const pd = pad.maxZ - pad.minZ;
+      if (pw < 0.15 || pd < 0.15) continue;
+      const slab = addShadowed(
+        new THREE.Mesh(new THREE.BoxGeometry(pw, floorHeight, pd), floorMat(palette)),
+      );
+      slab.position.set(
+        (pad.minX + pad.maxX) / 2,
+        floorY - floorHeight + floorHeight / 2,
+        (pad.minZ + pad.maxZ) / 2,
+      );
+      linerGroup.add(slab);
+    }
 
     const ceilingY = (floorIndex + 1) * storyHeight - 0.06 - 0.07;
     // Beams only on the top (grand) ceiling — lower ceilings have the hall void
@@ -333,7 +415,7 @@ export function createCompoundBuilding(opts) {
     const floorY = floorIndex * storyHeight + floorHeight;
     buildPlaceholderFurniture(
       piece.type, piece.x, piece.z, floorY, floorLevelForIndex(floorIndex),
-      palette, furnitureGroup, localColliders,
+      palette, furnitureGroup, localColliders, piece,
     );
   }
 
@@ -405,7 +487,11 @@ export function createCompoundBuilding(opts) {
     const floorIndex = preferUpper ? floorCount - 1 : 0;
     if (isInFloorHole(lx, lz, floorIndex)) {
       if (preferUpper && floorIndex > 0) {
-        return floorHeight;
+        // Only the grand hall void drops to ground — stair wells keep the upper deck.
+        if (hallVoid && pointInRect(lx, lz, hallVoid)) {
+          return floorHeight;
+        }
+        return storyHeight + floorHeight;
       }
       return null;
     }

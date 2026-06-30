@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 /** Height of each story (floor surface to floor surface). */
-export const LIBRARY_STORY_HEIGHT = 4.0;
+export const LIBRARY_STORY_HEIGHT = 4.2;
 
 /** Eye-level threshold for upper-floor collision + snapping. */
 export const LIBRARY_UPPER_THRESHOLD = 3.0;

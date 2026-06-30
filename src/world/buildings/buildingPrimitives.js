@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export const GLASS_OPACITY = 0.18;
+export const GLASS_OPACITY = 0.198;
 export const LINER_INSET = 0.03;
 export const FLOOR_COLLIDER_MAX_Y = 0.15;
 export const GLASS_RENDER_ORDER = 2;
@@ -109,28 +109,187 @@ export function openingsToRects(openings, wallH, floorBase = 0) {
   });
 }
 
-function addArchedGlass(glassGroup, cx, cy, cz, w, h, rotY) {
-  const rectH = h * 0.78;
-  const archH = h * 0.22;
-  const glass = new THREE.Mesh(new THREE.PlaneGeometry(w, rectH), glassMat());
-  glass.position.set(cx, cy - (h - rectH) / 2, cz);
-  glass.rotation.y = rotY;
-  glass.renderOrder = GLASS_RENDER_ORDER;
-  glassGroup.add(glass);
+const ARCH_TRIM_TUBE = 0.14;
+const ARCH_TRIM_PROTRUDE = 0.1;
+const ARCH_SILL_HEIGHT = 0.12;
 
-  const arch = new THREE.Mesh(
-    new THREE.ConeGeometry(w * 0.48, archH, 4, 1, true, 0, Math.PI * 2),
-    glassMat(),
+/** Spring line for a semicircular arch whose span matches the opening width. */
+export function archedSpringY(bottom, top, width) {
+  const rise = width / 2;
+  return Math.max(bottom + 0.15, top - rise);
+}
+
+/** Crown (top) of a semicircular arch — the wall opening must stay open up to here. */
+export function archedCrownY(bottom, top, width) {
+  const springY = archedSpringY(bottom, top, width);
+  return Math.min(springY + width / 2, top);
+}
+
+function leftSpandrelShape(edge, cx, springY, radius) {
+  const crownY = springY + radius;
+  const shape = new THREE.Shape();
+  shape.moveTo(edge, springY);
+  shape.lineTo(edge, crownY);
+  shape.lineTo(cx, crownY);
+  shape.absarc(cx, springY, radius, Math.PI / 2, Math.PI, false);
+  return shape;
+}
+
+function rightSpandrelShape(edge, cx, springY, radius) {
+  const crownY = springY + radius;
+  const shape = new THREE.Shape();
+  shape.moveTo(edge, springY);
+  shape.lineTo(edge, crownY);
+  shape.lineTo(cx, crownY);
+  shape.absarc(cx, springY, radius, Math.PI / 2, 0, true);
+  return shape;
+}
+
+/** Smooth curved spandrels (replaces stepped box slices that serrated the arch inner edge). */
+function addSmoothArchSpandrelsOnX(
+  shellGroup, linerGroup, left, right, springY, radius, z, thickness, shellM, linerM, inset,
+) {
+  const cx = (left + right) / 2;
+  for (const shape of [leftSpandrelShape(left, cx, springY, radius), rightSpandrelShape(right, cx, springY, radius)]) {
+    const shellGeo = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
+    shellGeo.translate(0, 0, -thickness / 2);
+    const shell = addShadowed(new THREE.Mesh(shellGeo, shellM));
+    shell.position.set(0, 0, z);
+    shellGroup.add(shell);
+
+    const linerDepth = thickness * 0.6;
+    const linerGeo = new THREE.ExtrudeGeometry(shape, { depth: linerDepth, bevelEnabled: false });
+    linerGeo.translate(0, 0, -linerDepth / 2);
+    const liner = addShadowed(new THREE.Mesh(linerGeo, linerM));
+    liner.position.set(0, 0, z - inset);
+    linerGroup.add(liner);
+  }
+}
+
+function addSmoothArchSpandrelsOnZ(
+  shellGroup, linerGroup, left, right, springY, radius, x, thickness, shellM, linerM, inset,
+) {
+  const cx = (left + right) / 2;
+  for (const shape of [leftSpandrelShape(left, cx, springY, radius), rightSpandrelShape(right, cx, springY, radius)]) {
+    const shellGeo = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
+    shellGeo.rotateY(-Math.PI / 2);
+    shellGeo.translate(thickness / 2, 0, 0);
+    const shell = addShadowed(new THREE.Mesh(shellGeo, shellM));
+    shell.position.set(x, 0, 0);
+    shellGroup.add(shell);
+
+    const linerDepth = thickness * 0.6;
+    const linerGeo = new THREE.ExtrudeGeometry(shape, { depth: linerDepth, bevelEnabled: false });
+    linerGeo.rotateY(-Math.PI / 2);
+    linerGeo.translate(linerDepth / 2, 0, 0);
+    const liner = addShadowed(new THREE.Mesh(linerGeo, linerM));
+    liner.position.set(x - inset, 0, 0);
+    linerGroup.add(liner);
+  }
+}
+
+function trimMat(palette) {
+  return new THREE.MeshStandardMaterial({
+    color: palette.facadeStone ?? palette.shell,
+    roughness: 0.84,
+    metalness: 0.02,
+    side: THREE.FrontSide,
+  });
+}
+
+function addArchedGlassOnX(glassGroup, cx, springY, cz, w, bottom, rotY) {
+  const paneH = springY - bottom;
+  const g = glassMat();
+  const pane = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.92, paneH), g);
+  pane.position.set(cx, bottom + paneH / 2, cz);
+  pane.rotation.y = rotY;
+  pane.renderOrder = GLASS_RENDER_ORDER;
+  glassGroup.add(pane);
+
+  const archGlass = new THREE.Mesh(
+    new THREE.TorusGeometry(w / 2, 0.02, 6, 20, Math.PI),
+    g,
   );
-  arch.position.set(cx, cy + rectH / 2 + archH / 2, cz);
-  arch.rotation.y = rotY + Math.PI / 4;
-  arch.renderOrder = GLASS_RENDER_ORDER;
-  glassGroup.add(arch);
+  archGlass.position.set(cx, springY, cz);
+  archGlass.renderOrder = GLASS_RENDER_ORDER;
+  glassGroup.add(archGlass);
+}
+
+function addArchedGlassOnZ(glassGroup, x, springY, cz, w, bottom, rotY) {
+  const paneH = springY - bottom;
+  const g = glassMat();
+  const pane = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.92, paneH), g);
+  pane.position.set(x, bottom + paneH / 2, cz);
+  pane.rotation.y = rotY;
+  pane.renderOrder = GLASS_RENDER_ORDER;
+  glassGroup.add(pane);
+
+  const archGlass = new THREE.Mesh(
+    new THREE.TorusGeometry(w / 2, 0.02, 6, 20, Math.PI),
+    g,
+  );
+  archGlass.position.set(x, springY, cz);
+  archGlass.rotation.y = Math.PI / 2;
+  archGlass.renderOrder = GLASS_RENDER_ORDER;
+  glassGroup.add(archGlass);
+}
+
+/** Full arched window frame: sill, jambs, and semicircular crown on X-aligned walls. */
+function addArchedFrameOnX(shellGroup, cx, springY, bottom, cz, w, sign, palette) {
+  const mat = trimMat(palette);
+  const bar = ARCH_TRIM_TUBE;
+  const outward = sign * ARCH_TRIM_PROTRUDE;
+  const frameW = w + bar * 2;
+  const jambH = springY - bottom - ARCH_SILL_HEIGHT * 0.5;
+  const jambCY = bottom + ARCH_SILL_HEIGHT + jambH / 2;
+
+  const sill = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(frameW, ARCH_SILL_HEIGHT, 0.18), mat));
+  sill.position.set(cx, bottom + ARCH_SILL_HEIGHT / 2, cz + outward * 0.5);
+  shellGroup.add(sill);
+
+  for (const side of [-1, 1]) {
+    const jamb = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(bar, jambH, 0.18), mat));
+    jamb.position.set(cx + side * (w / 2 + bar / 2), jambCY, cz + outward * 0.5);
+    shellGroup.add(jamb);
+  }
+
+  const arch = addShadowed(
+    new THREE.Mesh(new THREE.TorusGeometry(w / 2 + bar * 0.5, bar, 12, 28, Math.PI), mat),
+  );
+  arch.position.set(cx, springY, cz + outward);
+  shellGroup.add(arch);
+}
+
+/** Full arched window frame on Z-aligned walls (east/west). */
+function addArchedFrameOnZ(shellGroup, x, springY, bottom, cz, w, sign, palette) {
+  const mat = trimMat(palette);
+  const bar = ARCH_TRIM_TUBE;
+  const outward = sign * ARCH_TRIM_PROTRUDE;
+  const frameW = w + bar * 2;
+  const jambH = springY - bottom - ARCH_SILL_HEIGHT * 0.5;
+  const jambCY = bottom + ARCH_SILL_HEIGHT + jambH / 2;
+
+  const sill = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.18, ARCH_SILL_HEIGHT, frameW), mat));
+  sill.position.set(x + outward * 0.5, bottom + ARCH_SILL_HEIGHT / 2, cz);
+  shellGroup.add(sill);
+
+  for (const side of [-1, 1]) {
+    const jamb = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.18, jambH, bar), mat));
+    jamb.position.set(x + outward * 0.5, jambCY, cz + side * (w / 2 + bar / 2));
+    shellGroup.add(jamb);
+  }
+
+  const arch = addShadowed(
+    new THREE.Mesh(new THREE.TorusGeometry(w / 2 + bar * 0.5, bar, 12, 28, Math.PI), mat),
+  );
+  arch.position.set(x + outward, springY, cz);
+  arch.rotation.y = Math.PI / 2;
+  shellGroup.add(arch);
 }
 
 export function buildWallSegmentsAlongX(
   z, halfW, yBase, wallH, thickness, openings, shellGroup, linerGroup, glassGroup,
-  colliderBoxes, sign, palette, colliderLevel = 'all', floorBase = 0,
+  colliderBoxes, sign, palette, colliderLevel = 'all', floorBase = 0, emitColliders = true,
 ) {
   const rects = openingsToRects(openings, wallH, floorBase).sort((a, b) => a.left - b.left);
   const shellM = shellMat(palette);
@@ -153,7 +312,7 @@ export function buildWallSegmentsAlongX(
     liner.position.set(cx, cy, z - inset);
     linerGroup.add(liner);
 
-    if (segmentTouchesFloor(y1, floorBase)) {
+    if (emitColliders && segmentTouchesFloor(y1, floorBase)) {
       colliderBoxes.push({
         minX: cx - w / 2,
         maxX: cx + w / 2,
@@ -171,7 +330,8 @@ export function buildWallSegmentsAlongX(
     const cy = (rect.bottom + rect.top) / 2;
     const rotY = sign > 0 ? Math.PI : 0;
     if (rect.arched) {
-      addArchedGlass(glassGroup, cx, cy, z - inset * 0.5, w, h, rotY);
+      const springY = archedSpringY(rect.bottom, rect.top, w);
+      addArchedGlassOnX(glassGroup, cx, springY, z - inset * 0.5, w, rect.bottom, rotY);
     } else {
       const glass = new THREE.Mesh(new THREE.PlaneGeometry(w, h), glassMat());
       glass.position.set(cx, cy, z - inset * 0.5);
@@ -182,10 +342,28 @@ export function buildWallSegmentsAlongX(
   }
 
   for (const rect of rects) {
+    const w = rect.right - rect.left;
     if (rect.left > cursor) addSegment(cursor, rect.left, yBase, yBase + wallH);
-    if (rect.top < yBase + wallH) addSegment(rect.left, rect.right, rect.top, yBase + wallH);
-    if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
-    if (!rect.isDoor) addGlass(rect);
+    if (rect.arched) {
+      const springY = archedSpringY(rect.bottom, rect.top, w);
+      const crownY = archedCrownY(rect.bottom, rect.top, w);
+      if (crownY < yBase + wallH) addSegment(rect.left, rect.right, crownY, yBase + wallH);
+      if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
+      addSmoothArchSpandrelsOnX(
+        shellGroup, linerGroup, rect.left, rect.right, springY, w / 2, z, thickness, shellM, linerM, inset,
+      );
+    } else {
+      if (rect.top < yBase + wallH) addSegment(rect.left, rect.right, rect.top, yBase + wallH);
+      if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
+    }
+    if (!rect.isDoor) {
+      addGlass(rect);
+      if (rect.arched) {
+        const cx = (rect.left + rect.right) / 2;
+        const springY = archedSpringY(rect.bottom, rect.top, w);
+        addArchedFrameOnX(shellGroup, cx, springY, rect.bottom, z, w, sign, palette);
+      }
+    }
     cursor = rect.right;
   }
 
@@ -194,7 +372,7 @@ export function buildWallSegmentsAlongX(
 
 export function buildWallSegmentsAlongZ(
   x, halfD, yBase, wallH, thickness, openings, shellGroup, linerGroup, glassGroup,
-  colliderBoxes, sign, palette, colliderLevel = 'all', floorBase = 0,
+  colliderBoxes, sign, palette, colliderLevel = 'all', floorBase = 0, emitColliders = true,
 ) {
   const rects = openingsToRects(openings, wallH, floorBase).sort((a, b) => a.left - b.left);
   const shellM = shellMat(palette);
@@ -217,7 +395,7 @@ export function buildWallSegmentsAlongZ(
     liner.position.set(x - inset, cy, cz);
     linerGroup.add(liner);
 
-    if (segmentTouchesFloor(y1, floorBase)) {
+    if (emitColliders && segmentTouchesFloor(y1, floorBase)) {
       colliderBoxes.push({
         minX: x - thickness / 2 - 0.05,
         maxX: x + thickness / 2 + 0.05,
@@ -235,7 +413,8 @@ export function buildWallSegmentsAlongZ(
     const cy = (rect.bottom + rect.top) / 2;
     const rotY = sign > 0 ? -Math.PI / 2 : Math.PI / 2;
     if (rect.arched) {
-      addArchedGlass(glassGroup, x - inset * 0.5, cy, cz, w, h, rotY);
+      const springY = archedSpringY(rect.bottom, rect.top, w);
+      addArchedGlassOnZ(glassGroup, x - inset * 0.5, springY, cz, w, rect.bottom, rotY);
     } else {
       const glass = new THREE.Mesh(new THREE.PlaneGeometry(w, h), glassMat());
       glass.position.set(x - inset * 0.5, cy, cz);
@@ -246,10 +425,28 @@ export function buildWallSegmentsAlongZ(
   }
 
   for (const rect of rects) {
+    const w = rect.right - rect.left;
     if (rect.left > cursor) addSegment(cursor, rect.left, yBase, yBase + wallH);
-    if (rect.top < yBase + wallH) addSegment(rect.left, rect.right, rect.top, yBase + wallH);
-    if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
-    if (!rect.isDoor) addGlass(rect);
+    if (rect.arched) {
+      const springY = archedSpringY(rect.bottom, rect.top, w);
+      const crownY = archedCrownY(rect.bottom, rect.top, w);
+      if (crownY < yBase + wallH) addSegment(rect.left, rect.right, crownY, yBase + wallH);
+      if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
+      addSmoothArchSpandrelsOnZ(
+        shellGroup, linerGroup, rect.left, rect.right, springY, w / 2, x, thickness, shellM, linerM, inset,
+      );
+    } else {
+      if (rect.top < yBase + wallH) addSegment(rect.left, rect.right, rect.top, yBase + wallH);
+      if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
+    }
+    if (!rect.isDoor) {
+      addGlass(rect);
+      if (rect.arched) {
+        const cz = (rect.left + rect.right) / 2;
+        const springY = archedSpringY(rect.bottom, rect.top, w);
+        addArchedFrameOnZ(shellGroup, x, springY, rect.bottom, cz, w, sign, palette);
+      }
+    }
     cursor = rect.right;
   }
 
