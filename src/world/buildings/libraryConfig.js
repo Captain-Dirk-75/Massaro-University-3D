@@ -106,8 +106,8 @@ export const LIBRARY_PALETTE = {
 };
 
 // ── Exterior windows — matched pairs per floor (ground + upper, same height) ──
-// Sill lowered 20 cm; height raised 20 cm so arch crowns still sit just under each ceiling rim.
-export const LIBRARY_WINDOW_HEIGHT = 3.2;
+// Sill lowered 20 cm from the original 0.8 m.
+export const LIBRARY_WINDOW_HEIGHT = 3.0;
 export const LIBRARY_WINDOW_SILL = 0.6;
 
 function libraryWindowPairs(wall, width, offsets, arched = true) {
