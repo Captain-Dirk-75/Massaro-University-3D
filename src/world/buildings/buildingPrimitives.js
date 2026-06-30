@@ -119,6 +119,12 @@ export function archedSpringY(bottom, top, width) {
   return Math.max(bottom + 0.15, top - rise);
 }
 
+/** Crown (top) of a semicircular arch — the wall opening must stay open up to here. */
+export function archedCrownY(bottom, top, width) {
+  const springY = archedSpringY(bottom, top, width);
+  return Math.min(springY + width / 2, top);
+}
+
 function trimMat(palette) {
   return new THREE.MeshStandardMaterial({
     color: palette.facadeStone ?? palette.shell,
@@ -165,33 +171,53 @@ function addArchedGlassOnZ(glassGroup, x, springY, cz, w, bottom, rotY) {
   glassGroup.add(archGlass);
 }
 
-/** Clean semicircular stone arch + sill, flush on X-aligned walls (south/north). */
-function addArchedTrimOnX(shellGroup, cx, springY, bottom, cz, w, sign, palette) {
+/** Full arched window frame: sill, jambs, and semicircular crown on X-aligned walls. */
+function addArchedFrameOnX(shellGroup, cx, springY, bottom, cz, w, sign, palette) {
   const mat = trimMat(palette);
+  const bar = ARCH_TRIM_TUBE;
   const outward = sign * ARCH_TRIM_PROTRUDE;
+  const frameW = w + bar * 2;
+  const jambH = springY - bottom - ARCH_SILL_HEIGHT * 0.5;
+  const jambCY = bottom + ARCH_SILL_HEIGHT + jambH / 2;
 
-  const sill = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(w + 0.24, ARCH_SILL_HEIGHT, 0.16), mat));
+  const sill = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(frameW, ARCH_SILL_HEIGHT, 0.18), mat));
   sill.position.set(cx, bottom + ARCH_SILL_HEIGHT / 2, cz + outward * 0.5);
   shellGroup.add(sill);
 
+  for (const side of [-1, 1]) {
+    const jamb = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(bar, jambH, 0.18), mat));
+    jamb.position.set(cx + side * (w / 2 + bar / 2), jambCY, cz + outward * 0.5);
+    shellGroup.add(jamb);
+  }
+
   const arch = addShadowed(
-    new THREE.Mesh(new THREE.TorusGeometry(w / 2, ARCH_TRIM_TUBE, 12, 28, Math.PI), mat),
+    new THREE.Mesh(new THREE.TorusGeometry(w / 2 + bar * 0.5, bar, 12, 28, Math.PI), mat),
   );
   arch.position.set(cx, springY, cz + outward);
   shellGroup.add(arch);
 }
 
-/** Clean semicircular stone arch + sill on Z-aligned walls (east/west). */
-function addArchedTrimOnZ(shellGroup, x, springY, bottom, cz, w, sign, palette) {
+/** Full arched window frame on Z-aligned walls (east/west). */
+function addArchedFrameOnZ(shellGroup, x, springY, bottom, cz, w, sign, palette) {
   const mat = trimMat(palette);
+  const bar = ARCH_TRIM_TUBE;
   const outward = sign * ARCH_TRIM_PROTRUDE;
+  const frameW = w + bar * 2;
+  const jambH = springY - bottom - ARCH_SILL_HEIGHT * 0.5;
+  const jambCY = bottom + ARCH_SILL_HEIGHT + jambH / 2;
 
-  const sill = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.16, ARCH_SILL_HEIGHT, w + 0.24), mat));
+  const sill = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.18, ARCH_SILL_HEIGHT, frameW), mat));
   sill.position.set(x + outward * 0.5, bottom + ARCH_SILL_HEIGHT / 2, cz);
   shellGroup.add(sill);
 
+  for (const side of [-1, 1]) {
+    const jamb = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.18, jambH, bar), mat));
+    jamb.position.set(x + outward * 0.5, jambCY, cz + side * (w / 2 + bar / 2));
+    shellGroup.add(jamb);
+  }
+
   const arch = addShadowed(
-    new THREE.Mesh(new THREE.TorusGeometry(w / 2, ARCH_TRIM_TUBE, 12, 28, Math.PI), mat),
+    new THREE.Mesh(new THREE.TorusGeometry(w / 2 + bar * 0.5, bar, 12, 28, Math.PI), mat),
   );
   arch.position.set(x + outward, springY, cz);
   arch.rotation.y = Math.PI / 2;
@@ -254,7 +280,8 @@ export function buildWallSegmentsAlongX(
 
   for (const rect of rects) {
     const w = rect.right - rect.left;
-    const openTop = rect.arched ? archedSpringY(rect.bottom, rect.top, w) : rect.top;
+    const springY = rect.arched ? archedSpringY(rect.bottom, rect.top, w) : null;
+    const openTop = rect.arched ? archedCrownY(rect.bottom, rect.top, w) : rect.top;
     if (rect.left > cursor) addSegment(cursor, rect.left, yBase, yBase + wallH);
     if (openTop < yBase + wallH) addSegment(rect.left, rect.right, openTop, yBase + wallH);
     if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
@@ -262,7 +289,7 @@ export function buildWallSegmentsAlongX(
       addGlass(rect);
       if (rect.arched) {
         const cx = (rect.left + rect.right) / 2;
-        addArchedTrimOnX(shellGroup, cx, openTop, rect.bottom, z, w, sign, palette);
+        addArchedFrameOnX(shellGroup, cx, springY, rect.bottom, z, w, sign, palette);
       }
     }
     cursor = rect.right;
@@ -327,7 +354,8 @@ export function buildWallSegmentsAlongZ(
 
   for (const rect of rects) {
     const w = rect.right - rect.left;
-    const openTop = rect.arched ? archedSpringY(rect.bottom, rect.top, w) : rect.top;
+    const springY = rect.arched ? archedSpringY(rect.bottom, rect.top, w) : null;
+    const openTop = rect.arched ? archedCrownY(rect.bottom, rect.top, w) : rect.top;
     if (rect.left > cursor) addSegment(cursor, rect.left, yBase, yBase + wallH);
     if (openTop < yBase + wallH) addSegment(rect.left, rect.right, openTop, yBase + wallH);
     if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
@@ -335,7 +363,7 @@ export function buildWallSegmentsAlongZ(
       addGlass(rect);
       if (rect.arched) {
         const cz = (rect.left + rect.right) / 2;
-        addArchedTrimOnZ(shellGroup, x, openTop, rect.bottom, cz, w, sign, palette);
+        addArchedFrameOnZ(shellGroup, x, springY, rect.bottom, cz, w, sign, palette);
       }
     }
     cursor = rect.right;

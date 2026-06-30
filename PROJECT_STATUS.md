@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-30 (clean arched window trims)
+**Last updated:** 2026-06-30 (open arch crown + full window frame)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-30 — Library window arches: wall opening cut to arch crown (top no longer sealed); full frame trim (sill + jambs + arch crown)
 - 2026-06-30 — Rework library window arches: single semicircular stone trim + sill per opening (no jambs/torus blobs); width-matched spring line; torus glass arch replaces cone
 - 2026-06-30 — Fix black screen: `buildings/index.js` still exported removed `LIBRARY_SERVICE_DESK` after reception-desk rename
 - 2026-06-30 — Remove upper opening above library entrance; arched stone seals on all exterior windows; curved reception desk centred in grand hall (replaces service desk)
