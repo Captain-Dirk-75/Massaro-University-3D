@@ -67,7 +67,7 @@ function buildPartition(
   }
 }
 
-function buildPlaceholderFurniture(type, x, z, floorY, level, palette, group, colliderBoxes) {
+function buildPlaceholderFurniture(type, x, z, floorY, level, palette, group, colliderBoxes, opts = {}) {
   const items = {
     table: () => {
       const top = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.08, 0.95), woodMat(palette)));
@@ -94,8 +94,8 @@ function buildPlaceholderFurniture(type, x, z, floorY, level, palette, group, co
       colliderBoxes.push({ minX: x - 1.45, maxX: x + 1.45, minZ: z - 0.55, maxZ: z + 0.55, level });
     },
     serviceDesk: () => {
-      const radius = 1.35;
-      const height = 1.05;
+      const radius = opts.radius ?? 1.35;
+      const height = opts.height ?? 1.05;
       const deskColor = palette.serviceDesk ?? 0xc8a882;
       const mat = new THREE.MeshStandardMaterial({ color: deskColor, roughness: 0.78, metalness: 0.02 });
       const desk = addShadowed(
@@ -108,8 +108,8 @@ function buildPlaceholderFurniture(type, x, z, floorY, level, palette, group, co
       desk.rotation.y = Math.PI / 2;
       group.add(desk);
       colliderBoxes.push({
-        minX: x - 0.45,
-        maxX: x + 0.45,
+        minX: x - 0.45 * (radius / 1.35),
+        maxX: x + 0.45 * (radius / 1.35),
         minZ: z - radius,
         maxZ: z - 0.2,
         level,
@@ -373,7 +373,7 @@ export function createCompoundBuilding(opts) {
     const floorY = floorIndex * storyHeight + floorHeight;
     buildPlaceholderFurniture(
       piece.type, piece.x, piece.z, floorY, floorLevelForIndex(floorIndex),
-      palette, furnitureGroup, localColliders,
+      palette, furnitureGroup, localColliders, piece,
     );
   }
 

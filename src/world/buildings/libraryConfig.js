@@ -25,7 +25,7 @@
  *        SOUTH  (z = +10, entrance)
  *
  * Campus position lives in src/content/campus.js (library entry) — keep in sync:
- *   position { x: 0, y: 0, z: -48 }, footprint { width: 32, depth: 20 }
+ *   position { x: 0, y: 0, z: -44 }, footprint { width: 32, depth: 20 }
  */
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -33,7 +33,7 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 // ── Campus placement (mirror of campus.js — update both together) ──
-export const LIBRARY_CAMPUS_POSITION = { x: 0, y: 0, z: -48 };
+export const LIBRARY_CAMPUS_POSITION = { x: 0, y: 0, z: -44 };
 
 // ── Building shell (exterior facade / windows use these) ──
 export const LIBRARY_WIDTH = 32;          // x ∈ [−16, 16]
@@ -131,7 +131,8 @@ export const LIBRARY_FACADE = {
 export const LIBRARY_CEILING_BEAMS = 5;
 
 // ── Service / help desk — half-round counter centred between the two staircases ──
-export const LIBRARY_SERVICE_DESK = { x: 0, z: 3.5, floor: 0 };
+export const LIBRARY_SERVICE_DESK_SIZE = { radius: 1.62, height: 1.26 }; // +20% over base 1.35 / 1.05
+export const LIBRARY_SERVICE_DESK = { x: 0, z: 3.5, floor: 0, ...LIBRARY_SERVICE_DESK_SIZE };
 
 // ── Membership-gated section: the upper-floor west archive ──
 //    Evaluated live by sectionGates.js against the existing access system.
