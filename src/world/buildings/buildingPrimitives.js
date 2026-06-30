@@ -109,9 +109,16 @@ export function openingsToRects(openings, wallH, floorBase = 0) {
   });
 }
 
+export const ARCHED_SPRING_RATIO = 0.78;
+export const ARCHED_RISE_RATIO = 0.22;
+
+export function archedSpringY(bottom, top) {
+  return bottom + (top - bottom) * ARCHED_SPRING_RATIO;
+}
+
 function addArchedGlass(glassGroup, cx, cy, cz, w, h, rotY) {
-  const rectH = h * 0.78;
-  const archH = h * 0.22;
+  const rectH = h * ARCHED_SPRING_RATIO;
+  const archH = h * ARCHED_RISE_RATIO;
   const glass = new THREE.Mesh(new THREE.PlaneGeometry(w, rectH), glassMat());
   glass.position.set(cx, cy - (h - rectH) / 2, cz);
   glass.rotation.y = rotY;
@@ -126,6 +133,74 @@ function addArchedGlass(glassGroup, cx, cy, cz, w, h, rotY) {
   arch.rotation.y = rotY + Math.PI / 4;
   arch.renderOrder = GLASS_RENDER_ORDER;
   glassGroup.add(arch);
+}
+
+function addArchedSeal(shellGroup, linerGroup, cx, springY, top, cz, w, sign, palette) {
+  const shellM = shellMat(palette);
+  const linerM = linerMat(palette);
+  const inset = LINER_INSET * sign;
+  const rotY = sign > 0 ? Math.PI : 0;
+  const bar = 0.16;
+  const archR = w / 2;
+
+  const sill = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(w + bar * 2, bar, 0.22), shellM));
+  sill.position.set(cx, springY - bar * 0.55, cz);
+  sill.rotation.y = rotY;
+  shellGroup.add(sill);
+
+  for (const side of [-1, 1]) {
+    const jamb = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(bar, top - springY + bar, 0.2), shellM));
+    jamb.position.set(cx + side * (w / 2 + bar / 2), (springY + top) / 2, cz);
+    jamb.rotation.y = rotY;
+    shellGroup.add(jamb);
+  }
+
+  const arch = addShadowed(
+    new THREE.Mesh(new THREE.TorusGeometry(archR, bar * 0.55, 8, 20, Math.PI), shellM),
+  );
+  arch.position.set(cx, springY, cz);
+  arch.rotation.y = rotY;
+  arch.rotation.x = Math.PI / 2;
+  shellGroup.add(arch);
+
+  const linerSill = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(w + bar, bar * 0.7, 0.12), linerM));
+  linerSill.position.set(cx, springY - bar * 0.45, cz - inset);
+  linerSill.rotation.y = rotY;
+  linerGroup.add(linerSill);
+}
+
+function addArchedSealAlongZ(shellGroup, linerGroup, x, springY, top, cz, w, sign, palette) {
+  const shellM = shellMat(palette);
+  const linerM = linerMat(palette);
+  const inset = LINER_INSET * sign;
+  const rotY = sign > 0 ? -Math.PI / 2 : Math.PI / 2;
+  const bar = 0.16;
+  const archR = w / 2;
+
+  const sill = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.22, bar, w + bar * 2), shellM));
+  sill.position.set(x, springY - bar * 0.55, cz);
+  sill.rotation.y = rotY;
+  shellGroup.add(sill);
+
+  for (const side of [-1, 1]) {
+    const jamb = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.2, top - springY + bar, bar), shellM));
+    jamb.position.set(x - inset, (springY + top) / 2, cz + side * (w / 2 + bar / 2));
+    jamb.rotation.y = rotY;
+    shellGroup.add(jamb);
+  }
+
+  const arch = addShadowed(
+    new THREE.Mesh(new THREE.TorusGeometry(archR, bar * 0.55, 8, 20, Math.PI), shellM),
+  );
+  arch.position.set(x - inset * 0.5, springY, cz);
+  arch.rotation.z = Math.PI / 2;
+  arch.rotation.y = rotY;
+  shellGroup.add(arch);
+
+  const linerSill = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(0.12, bar * 0.7, w + bar), linerM));
+  linerSill.position.set(x - inset, springY - bar * 0.45, cz);
+  linerSill.rotation.y = rotY;
+  linerGroup.add(linerSill);
 }
 
 export function buildWallSegmentsAlongX(
@@ -182,10 +257,18 @@ export function buildWallSegmentsAlongX(
   }
 
   for (const rect of rects) {
+    const openTop = rect.arched ? archedSpringY(rect.bottom, rect.top) : rect.top;
     if (rect.left > cursor) addSegment(cursor, rect.left, yBase, yBase + wallH);
-    if (rect.top < yBase + wallH) addSegment(rect.left, rect.right, rect.top, yBase + wallH);
+    if (openTop < yBase + wallH) addSegment(rect.left, rect.right, openTop, yBase + wallH);
     if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
-    if (!rect.isDoor) addGlass(rect);
+    if (!rect.isDoor) {
+      addGlass(rect);
+      if (rect.arched) {
+        const cx = (rect.left + rect.right) / 2;
+        const w = rect.right - rect.left;
+        addArchedSeal(shellGroup, linerGroup, cx, openTop, rect.top, z, w, sign, palette);
+      }
+    }
     cursor = rect.right;
   }
 
@@ -246,10 +329,18 @@ export function buildWallSegmentsAlongZ(
   }
 
   for (const rect of rects) {
+    const openTop = rect.arched ? archedSpringY(rect.bottom, rect.top) : rect.top;
     if (rect.left > cursor) addSegment(cursor, rect.left, yBase, yBase + wallH);
-    if (rect.top < yBase + wallH) addSegment(rect.left, rect.right, rect.top, yBase + wallH);
+    if (openTop < yBase + wallH) addSegment(rect.left, rect.right, openTop, yBase + wallH);
     if (rect.bottom > yBase) addSegment(rect.left, rect.right, yBase, rect.bottom);
-    if (!rect.isDoor) addGlass(rect);
+    if (!rect.isDoor) {
+      addGlass(rect);
+      if (rect.arched) {
+        const cz = (rect.left + rect.right) / 2;
+        const w = rect.right - rect.left;
+        addArchedSealAlongZ(shellGroup, linerGroup, x, openTop, rect.top, cz, w, sign, palette);
+      }
+    }
     cursor = rect.right;
   }
 

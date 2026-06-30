@@ -147,9 +147,16 @@ export const LIBRARY_FACADE = {
 // ── Heavy timber ceiling beams (grand vaulted feel, top ceiling only) ──
 export const LIBRARY_CEILING_BEAMS = 5;
 
-// ── Service / help desk — half-round counter centred between the two staircases ──
-export const LIBRARY_SERVICE_DESK_SIZE = { radius: 1.62, height: 1.26 }; // +20% over base 1.35 / 1.05
-export const LIBRARY_SERVICE_DESK = { x: 0, z: 3.5, floor: 0, ...LIBRARY_SERVICE_DESK_SIZE };
+// ── Reception desk — curved counter centred in the grand hall (faces the entrance) ──
+export const LIBRARY_RECEPTION_DESK = {
+  x: 0,
+  z: 4.0,
+  floor: 0,
+  width: 4.6,
+  height: 1.05,
+  depth: 1.45,
+  faceZ: 1,
+};
 
 // ── Membership-gated section: the upper-floor west archive ──
 //    Evaluated live by sectionGates.js against the existing access system.
@@ -274,7 +281,7 @@ export function createLibraryOpts(area) {
 
     // ── Light, sensible furnishing — nothing in doorways, stairs, or paths ──
     furniture: [
-      { type: 'serviceDesk', x: LIBRARY_SERVICE_DESK.x, z: LIBRARY_SERVICE_DESK.z, floor: LIBRARY_SERVICE_DESK.floor },
+      { type: 'reception', ...LIBRARY_RECEPTION_DESK },
 
       // West reading room (ground)
       { type: 'bookshelf', x: -14.6, z: -3, floor: 0 },

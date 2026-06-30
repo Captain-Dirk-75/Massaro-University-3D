@@ -88,10 +88,37 @@ function buildPlaceholderFurniture(type, x, z, floorY, level, palette, group, co
       colliderBoxes.push({ minX: x - 1.05, maxX: x + 1.05, minZ: z - 0.28, maxZ: z + 0.28, level });
     },
     reception: () => {
-      const desk = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.05, 0.9), woodMat(palette)));
-      desk.position.set(x, floorY + 0.52, z);
-      group.add(desk);
-      colliderBoxes.push({ minX: x - 1.45, maxX: x + 1.45, minZ: z - 0.55, maxZ: z + 0.55, level });
+      const wm = woodMat(palette);
+      const w = opts.width ?? 4.6;
+      const h = opts.height ?? 1.05;
+      const depth = opts.depth ?? 1.45;
+      const faceZ = opts.faceZ ?? 1;
+
+      const top = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(w, 0.14, depth), wm));
+      top.position.set(x, floorY + h + 0.03, z);
+      group.add(top);
+
+      const front = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.55), wm));
+      front.position.set(x, floorY + h / 2, z + faceZ * 0.38);
+      group.add(front);
+
+      const curve = addShadowed(
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(w * 0.48, w * 0.48, h, 24, 1, false, 0, Math.PI),
+          wm,
+        ),
+      );
+      curve.position.set(x, floorY + h / 2, z - faceZ * 0.12);
+      curve.rotation.y = Math.PI / 2;
+      group.add(curve);
+
+      colliderBoxes.push({
+        minX: x - w / 2 - 0.15,
+        maxX: x + w / 2 + 0.15,
+        minZ: z - depth / 2 - 0.15,
+        maxZ: z + depth / 2 + 0.35,
+        level,
+      });
     },
     serviceDesk: () => {
       const radius = opts.radius ?? 1.35;
@@ -261,9 +288,11 @@ export function createCompoundBuilding(opts) {
       byWall[win.wall]?.push({ ...win, sill });
     }
 
-    // Door openings on every floor — upper story must not seal the entrance with a solid slab + collider
-    for (const door of exteriorDoors) {
-      byWall[door.wall]?.push({ ...door, sill: door.bottom ?? 0, isDoor: true });
+    // Ground-floor doors only — upper story stays solid above the entrance (no second opening)
+    if (floorIndex === 0) {
+      for (const door of exteriorDoors) {
+        byWall[door.wall]?.push({ ...door, sill: door.bottom ?? 0, isDoor: true });
+      }
     }
 
     const exteriorColliders = floorIndex === 0;
