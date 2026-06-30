@@ -127,8 +127,10 @@ function buildPediment(group, cfg, y, z, width, palette) {
 }
 
 function buildDoorTrim(group, cfg, faceZ, outward, storyHeight, palette) {
+  if (cfg.doorTrim === false) return;
+
   const half = cfg.doorClearWidth / 2;
-  const z = faceZ + outward * 0.32;
+  const z = faceZ + outward * 0.55;
   const trim = decorMat(palette, true);
   const h = storyHeight * 0.38;
   const y = h / 2;
@@ -142,13 +144,6 @@ function buildDoorTrim(group, cfg, faceZ, outward, storyHeight, palette) {
   const lintel = addShadowed(new THREE.Mesh(new THREE.BoxGeometry(cfg.doorClearWidth + 0.5, 0.16, 0.14), trim));
   lintel.position.set(0, h, z);
   group.add(lintel);
-
-  const arch = addShadowed(
-    new THREE.Mesh(new THREE.TorusGeometry(half * 0.92, 0.1, 8, 18, Math.PI), trim),
-  );
-  arch.position.set(0, h + 0.05, z);
-  arch.rotation.x = Math.PI / 2;
-  group.add(arch);
 }
 
 /**
@@ -217,18 +212,22 @@ export function buildClassicalFacade({
   }
 
   buildPediment(facadeGroup, cfg, columnTop + cfg.entablatureHeight + 0.08, porticoZ, cfg.bayWidth + 0.4, palette);
+  if (cfg.exteriorSteps !== false) {
+    buildSteps(facadeGroup, cfg, halfD, palette);
+  }
   buildDoorTrim(facadeGroup, cfg, faceZ, outward, storyHeight, palette);
-  buildSteps(facadeGroup, cfg, halfD, palette);
 
-  const deckDepth = cfg.bayProjection + cfg.stepCount * cfg.stepDepth + 0.6;
-  const deck = addShadowed(
-    new THREE.Mesh(
-      new THREE.BoxGeometry(cfg.bayWidth + 1.2, 0.12, deckDepth),
-      decorMat(palette, true),
-    ),
-  );
-  deck.position.set(0, 0.06, faceZ + outward * (deckDepth / 2 + 0.08));
-  facadeGroup.add(deck);
+  if (cfg.porticoDeck !== false) {
+    const deckDepth = cfg.bayProjection + cfg.stepCount * cfg.stepDepth + 0.6;
+    const deck = addShadowed(
+      new THREE.Mesh(
+        new THREE.BoxGeometry(cfg.bayWidth + 1.2, 0.12, deckDepth),
+        decorMat(palette, true),
+      ),
+    );
+    deck.position.set(0, 0.06, faceZ + outward * (deckDepth / 2 + 0.08));
+    facadeGroup.add(deck);
+  }
 
   const roofCap = addShadowed(
     new THREE.Mesh(

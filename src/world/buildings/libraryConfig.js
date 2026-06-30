@@ -45,8 +45,8 @@ export const LIBRARY_FLOOR_HEIGHT = 0.14;
 
 // ── Bay layout: two side bays split off a wide central hall ──
 export const LIBRARY_PARTITION_X = 8;     // interior walls at x = ±8
-export const LIBRARY_GROUND_DOOR_Z = 3;   // hall → side-room doorway (front third)
-export const LIBRARY_UPPER_DOOR_Z = -6;   // gallery → upper-room doorway (rear)
+export const LIBRARY_GROUND_DOOR_Z = -7;  // rear doorway — clear of both stair flights
+export const LIBRARY_UPPER_DOOR_Z = -7;   // gallery → upper-room doorway (rear, aligned)
 
 // ── Double-height hall void (hole in floor-0 ceiling + floor-1 deck) ──
 //    Open the whole front of the hall to full height; the walkable gallery is
@@ -121,14 +121,16 @@ export const LIBRARY_FACADE = {
   roofOverhang: 1.2,
   doorClearWidth: 4.2,
   columnGapFromDoor: 0.55,
+  doorTrim: false,
+  exteriorSteps: false,
+  porticoDeck: false,
 };
 
 // ── Heavy timber ceiling beams (grand vaulted feel, top ceiling only) ──
 export const LIBRARY_CEILING_BEAMS = 5;
 
-// ── Reception desk — front-RIGHT of the hall, well off the door + walk-in path
-//    (door is x∈[-1.8,1.8]; desk clears it and the east staircase) ──
-export const LIBRARY_RECEPTION = { x: 3.5, z: 8.5, floor: 0 };
+// ── Reception desk — rear-left of the hall, far from door + stair feet ──
+export const LIBRARY_RECEPTION = { x: -3.5, z: -1.5, floor: 0 };
 
 // ── Membership-gated section: the upper-floor west archive ──
 //    Evaluated live by sectionGates.js against the existing access system.
@@ -189,14 +191,16 @@ export function createLibraryOpts(area) {
     // ── Solid interior walls splitting the side bays off the hall ──
     //    Spans are symmetric about z=0 (full depth) so the proven builder
     //    centres them correctly; each carries one real doorway opening.
+    hallVoid: LIBRARY_HALL_VOID,
+
     partitions: [
-      { axis: 'x', at: -px, spanMin, spanMax, floors: [0], colliderLevel: 'ground',
+      { axis: 'x', at: -px, spanMin, spanMax, floors: [0], colliderLevel: 'all',
         openings: [{ at: LIBRARY_GROUND_DOOR_Z, width: 2.8, height: 3.0, bottom: 0 }] },
-      { axis: 'x', at: px, spanMin, spanMax, floors: [0], colliderLevel: 'ground',
+      { axis: 'x', at: px, spanMin, spanMax, floors: [0], colliderLevel: 'all',
         openings: [{ at: LIBRARY_GROUND_DOOR_Z, width: 2.8, height: 3.0, bottom: 0 }] },
-      { axis: 'x', at: -px, spanMin, spanMax, floors: [1], colliderLevel: 'upper',
+      { axis: 'x', at: -px, spanMin, spanMax, floors: [1], colliderLevel: 'all',
         openings: [{ at: LIBRARY_UPPER_DOOR_Z, width: 2.6, height: 3.0, bottom: 0 }] },
-      { axis: 'x', at: px, spanMin, spanMax, floors: [1], colliderLevel: 'upper',
+      { axis: 'x', at: px, spanMin, spanMax, floors: [1], colliderLevel: 'all',
         openings: [{ at: LIBRARY_UPPER_DOOR_Z, width: 2.6, height: 3.0, bottom: 0 }] },
     ],
 
@@ -213,6 +217,11 @@ export function createLibraryOpts(area) {
       { floor: 0, ...LIBRARY_HALL_VOID },
       { floor: 0, ...STAIR_HOLES[0] },
       { floor: 0, ...STAIR_HOLES[1] },
+    ],
+
+    floorPads: [
+      { floor: 1, minX: -STAIR_OUTER_X, maxX: -LIBRARY_STAIR_VOID_GAP_X, minZ: -3.8, maxZ: -2.0 },
+      { floor: 1, minX: LIBRARY_STAIR_VOID_GAP_X, maxX: STAIR_OUTER_X, minZ: -3.8, maxZ: -2.0 },
     ],
 
     // ── Rear gallery railing along the void edge (collides on the upper level);
@@ -249,14 +258,9 @@ export function createLibraryOpts(area) {
 
     // ── Light, sensible furnishing — nothing in doorways, stairs, or paths ──
     furniture: [
-      // Reception desk: front-left of the hall, clear of the centre walk-in path
       { type: 'reception', x: LIBRARY_RECEPTION.x, z: LIBRARY_RECEPTION.z, floor: LIBRARY_RECEPTION.floor },
 
-      // Hall: a pair of reading tables flanking the entry, bookshelves on the rear wall
-      { type: 'table', x: -4.0, z: 6.5, floor: 0 },
-      { type: 'chair', x: -4.0, z: 7.3, floor: 0 },
-      { type: 'table', x: 4.0, z: 6.5, floor: 0 },
-      { type: 'chair', x: 4.0, z: 7.3, floor: 0 },
+      // Hall: bookshelves on the rear wall only (no tables near stair feet)
       { type: 'bookshelf', x: -6.5, z: -9.0, floor: 0 },
       { type: 'bookshelf', x: -2.2, z: -9.0, floor: 0 },
       { type: 'bookshelf', x: 2.2, z: -9.0, floor: 0 },

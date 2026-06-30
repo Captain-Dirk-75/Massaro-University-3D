@@ -13,6 +13,7 @@ import {
   buildWallSegmentsAlongX,
   buildWallSegmentsAlongZ,
   createPalette,
+  floorMat,
   shellMat,
   woodMat,
 } from './buildingPrimitives.js';
@@ -202,6 +203,8 @@ export function createCompoundBuilding(opts) {
     furniture = [],
     ceilingBeams = 0,
     facade = null,
+    hallVoid = null,
+    floorPads = [],
   } = opts;
 
   const palette = createPalette(paletteOverrides);
@@ -258,6 +261,21 @@ export function createCompoundBuilding(opts) {
     const floorY = floorIndex * storyHeight + floorHeight;
     const deckHoles = holesByFloor.get(floorIndex) ?? [];
     buildFloorDeck(insetW, insetD, floorY - floorHeight, floorHeight, deckHoles, palette, linerGroup);
+
+    for (const pad of floorPads.filter((p) => p.floor === floorIndex)) {
+      const pw = pad.maxX - pad.minX;
+      const pd = pad.maxZ - pad.minZ;
+      if (pw < 0.15 || pd < 0.15) continue;
+      const slab = addShadowed(
+        new THREE.Mesh(new THREE.BoxGeometry(pw, floorHeight, pd), floorMat(palette)),
+      );
+      slab.position.set(
+        (pad.minX + pad.maxX) / 2,
+        floorY - floorHeight + floorHeight / 2,
+        (pad.minZ + pad.maxZ) / 2,
+      );
+      linerGroup.add(slab);
+    }
 
     const ceilingY = (floorIndex + 1) * storyHeight - 0.06 - 0.07;
     // Beams only on the top (grand) ceiling — lower ceilings have the hall void
@@ -405,7 +423,11 @@ export function createCompoundBuilding(opts) {
     const floorIndex = preferUpper ? floorCount - 1 : 0;
     if (isInFloorHole(lx, lz, floorIndex)) {
       if (preferUpper && floorIndex > 0) {
-        return floorHeight;
+        // Only the grand hall void drops to ground — stair wells keep the upper deck.
+        if (hallVoid && pointInRect(lx, lz, hallVoid)) {
+          return floorHeight;
+        }
+        return storyHeight + floorHeight;
       }
       return null;
     }
