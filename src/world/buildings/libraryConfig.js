@@ -105,6 +105,23 @@ export const LIBRARY_PALETTE = {
   serviceDesk: 0xc8a882,
 };
 
+// ── Exterior windows — matched pairs per floor (ground + upper, same height) ──
+export const LIBRARY_WINDOW_HEIGHT = 3.0;
+export const LIBRARY_WINDOW_SILL = 0.8;
+
+function libraryWindowPairs(wall, width, offsets, arched = true) {
+  const windows = [];
+  for (const offset of offsets) {
+    for (let floor = 0; floor < LIBRARY_FLOOR_COUNT; floor++) {
+      windows.push({
+        wall, floor, width, height: LIBRARY_WINDOW_HEIGHT, offset,
+        sill: LIBRARY_WINDOW_SILL, arched,
+      });
+    }
+  }
+  return windows;
+}
+
 // ── Classical entrance facade (decoration only — see classicalFacade.js) ──
 export const LIBRARY_FACADE = {
   wall: 'south',
@@ -175,19 +192,12 @@ export function createLibraryOpts(area) {
       { wall: 'south', width: 3.6, height: 3.4, offset: 0, bottom: 0 },
     ],
 
-    // ── See-through arched windows (unchanged glass system) ──
+    // ── See-through arched windows — symmetric ground + upper pairs on every wall ──
     exteriorWindows: [
-      { wall: 'south', width: 2.0, height: 5.2, offset: -9.5, sill: 0.9, arched: true },
-      { wall: 'south', width: 2.0, height: 5.2, offset: 9.5, sill: 0.9, arched: true },
-      { wall: 'north', width: 2.2, height: 5.8, offset: -11, sill: 0.8, arched: true },
-      { wall: 'north', width: 2.2, height: 5.8, offset: 0, sill: 0.8, arched: true },
-      { wall: 'north', width: 2.2, height: 5.8, offset: 11, sill: 0.8, arched: true },
-      { wall: 'east', width: 1.8, height: 4.8, offset: -6, sill: 1.0, arched: true },
-      { wall: 'east', width: 1.8, height: 4.8, offset: 0, sill: 1.0, arched: true },
-      { wall: 'east', width: 1.8, height: 4.8, offset: 6, sill: 1.0, arched: true },
-      { wall: 'west', width: 1.8, height: 4.8, offset: -6, sill: 1.0, arched: true },
-      { wall: 'west', width: 1.8, height: 4.8, offset: 0, sill: 1.0, arched: true },
-      { wall: 'west', width: 1.8, height: 4.8, offset: 6, sill: 1.0, arched: true },
+      ...libraryWindowPairs('south', 2.0, [-9.5, 9.5]),
+      ...libraryWindowPairs('north', 2.2, [-11, 0, 11]),
+      ...libraryWindowPairs('east', 1.8, [-6, 0, 6]),
+      ...libraryWindowPairs('west', 1.8, [-6, 0, 6]),
     ],
 
     // ── Solid interior walls splitting the side bays off the hall ──

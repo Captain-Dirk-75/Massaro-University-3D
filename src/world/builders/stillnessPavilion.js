@@ -70,29 +70,17 @@ export function buildStillnessPavilion(area) {
     pavilion.add(post);
   }
 
-  const roofShape = new THREE.Shape();
-  roofShape.moveTo(-4.6, 0);
-  roofShape.lineTo(4.6, 0);
-  roofShape.lineTo(4.0, 0.55);
-  roofShape.lineTo(-4.0, 0.55);
-  roofShape.closePath();
-
-  const roofGeo = new THREE.ExtrudeGeometry(roofShape, {
-    depth: 7.8,
-    bevelEnabled: true,
-    bevelThickness: 0.06,
-    bevelSize: 0.05,
-    bevelSegments: 1,
-  });
-  roofGeo.rotateY(Math.PI / 2);
-  roofGeo.translate(0, postH + 0.1, 0);
-
+  const roofThickness = 0.18;
+  const roofOverhang = 0.9;
+  const postSpanX = 6.4;
+  const postSpanZ = 5.0;
   const roof = addShadowed(
     new THREE.Mesh(
-      roofGeo,
+      new THREE.BoxGeometry(postSpanX + roofOverhang * 2, roofThickness, postSpanZ + roofOverhang * 2),
       new THREE.MeshStandardMaterial({ color: ROOF_COLOR, roughness: 0.86 }),
     ),
   );
+  roof.position.set(0, postH + roofThickness / 2, 0);
   pavilion.add(roof);
 
   const benchGeo = new THREE.BoxGeometry(2.8, 0.28, 0.55);

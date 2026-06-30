@@ -195,14 +195,15 @@ export function buildClassicalFacade({
   lowerCornice.position.set(0, storyHeight - 0.1, faceZ + outward * 0.16);
   facadeGroup.add(lowerCornice);
 
-  const columnTop = cfg.columnHeight + 0.45;
+  // Capital top = columnHeight + 0.34 (matches createFlutedColumn geometry).
+  const columnCrownY = cfg.columnHeight + 0.34;
   const entablature = addShadowed(
     new THREE.Mesh(
       new THREE.BoxGeometry(cfg.bayWidth, cfg.entablatureHeight, 0.5),
       decorMat(palette),
     ),
   );
-  entablature.position.set(0, columnTop, porticoZ);
+  entablature.position.set(0, columnCrownY + cfg.entablatureHeight / 2, porticoZ);
   facadeGroup.add(entablature);
 
   for (const x of columnPositions(cfg)) {
@@ -211,7 +212,11 @@ export function buildClassicalFacade({
     facadeGroup.add(col);
   }
 
-  buildPediment(facadeGroup, cfg, columnTop + cfg.entablatureHeight + 0.08, porticoZ, cfg.bayWidth + 0.4, palette);
+  buildPediment(
+    facadeGroup, cfg,
+    columnCrownY + cfg.entablatureHeight + 0.08,
+    porticoZ, cfg.bayWidth + 0.4, palette,
+  );
   if (cfg.exteriorSteps !== false) {
     buildSteps(facadeGroup, cfg, halfD, palette);
   }

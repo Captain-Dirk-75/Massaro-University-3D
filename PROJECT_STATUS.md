@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-30 (library: +20% service desk, moved 4m toward pond)
+**Last updated:** 2026-06-30 (stillness pavilion roof + library symmetric windows)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
