@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-30 (library floors +20cm)
+**Last updated:** 2026-06-30 (remove scene-swap interior dead code)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-06-30 — Removed dead scene-swap interior system (`src/world/interiors/`, old `library.js`, `fadeOverlay`, empty `interiors.js` seed); library/pavilion stay unified-world only
 - 2026-06-30 — Library story height 4.0 → 4.2 m per floor (8.4 m total); portico columns scaled; stair snap synced
 - 2026-06-30 — All building window glass +10% opacity (pavilion, library, exterior/interior glass materials)
 - 2026-06-30 — Smooth arch spandrels via extruded curves (fixes serrated inner window edge)

@@ -22,15 +22,13 @@ import { getCampusPerches } from './world/perches.js';
 import { createWorldAnimations } from './world/animations.js';
 import { createKiosk } from './world/kiosk.js';
 import { createGuideFigure } from './world/guideFigure.js';
-import { createInteriorManager } from './world/interiors/interiorManager.js';
 import { createPostProcessing } from './post/postProcessing.js';
-import { createFadeOverlay } from './ui/fadeOverlay.js';
 import { createHud } from './ui/hud.js';
 import { createCustomizePanel } from './ui/customizePanel.js';
 import { createStorePanel } from './ui/storePanel.js';
 import { createGuidePanel } from './ui/guidePanel.js';
 import { createPlayerAvatar } from './avatar/playerAvatar.js';
-import { bootstrapPlatform, getCurrentUser, getCachedInteriors } from './platform/index.js';
+import { bootstrapPlatform, getCurrentUser } from './platform/index.js';
 import {
   playerState,
   applyPlayerState,
@@ -56,8 +54,6 @@ async function bootstrap() {
 
   const outdoorScene = createScene();
   applyAtmosphere(outdoorScene);
-
-  const indoorScene = createScene();
 
   const outdoorRoot = new THREE.Group();
   outdoorScene.add(outdoorRoot);
@@ -123,8 +119,6 @@ async function bootstrap() {
   });
 
   const outdoorComposer = createPostProcessing(renderer, outdoorScene, camera);
-  const indoorComposer = createPostProcessing(renderer, indoorScene, camera);
-  const fade = createFadeOverlay();
 
   let customizePanel;
   let storePanel;
@@ -183,14 +177,9 @@ async function bootstrap() {
 
   applyProfileToUi(playerState.profile);
 
-  let interiorManager;
-
   const controls = createFirstPersonControls(camera, canvas, {
     colliders: worldColliders,
     getFloorY(x, z, currentY) {
-      if (interiorManager?.isIndoor()) {
-        return interiorManager.resolveFloorY(x, z);
-      }
       for (const building of unifiedBuildings) {
         const y = building.getFloorY(x, z, currentY);
         if (y != null) return y;
@@ -204,51 +193,17 @@ async function bootstrap() {
     },
   });
 
-  const interiors = getCachedInteriors();
-  interiorManager = createInteriorManager({
-    outdoorScene,
-    indoorScene,
-    outdoorRoot,
-    camera,
-    outdoorComposer: outdoorComposer.composer,
-    indoorComposer: indoorComposer.composer,
-    fade,
-    playerAvatar,
-    controls,
-    outdoorColliders: worldColliders,
-    interiors,
-  });
-
-  const entranceTargets = interiorManager.createEntranceTargets();
-
-  function getInteractionTargets() {
-    if (interiorManager.isIndoor()) {
-      const exit = interiorManager.getExitTarget();
-      return exit ? [exit] : [];
-    }
-    return [kiosk, guide, ...entranceTargets];
-  }
-
   const interaction = createInteractionSystem({
     camera,
-    getTargets: getInteractionTargets,
+    getTargets: () => [kiosk, guide],
     onInteract(target) {
-      if (target.type === 'entrance') {
-        const def = interiorManager.findInterior(target.interiorId);
-        if (def) void interiorManager.enter(def);
-        return;
-      }
-      if (target.type === 'exit') {
-        void interiorManager.exit();
-        return;
-      }
       if (target.id === 'sage-grove') {
         guidePanel.open();
       } else if (target.id === 'course-sanctuary') {
         storePanel.open();
       }
     },
-    isBlocked: () => isUiBlocking() || interiorManager.isTransitioning(),
+    isBlocked: () => isUiBlocking(),
   });
 
   canvas.addEventListener(
@@ -264,7 +219,6 @@ async function bootstrap() {
   window.addEventListener('resize', () => {
     handleResize(renderer, camera);
     outdoorComposer.setSize(window.innerWidth, window.innerHeight);
-    indoorComposer.setSize(window.innerWidth, window.innerHeight);
   });
 
   let sessionSaveTimer = 0;
@@ -286,7 +240,7 @@ async function bootstrap() {
     scene: outdoorScene,
     camera,
     render: () => {
-      interiorManager.render();
+      outdoorComposer.render();
       hud.setPerfStats({
         fps: lastFps,
         drawCalls: renderer.info.render.calls,
@@ -302,15 +256,13 @@ async function bootstrap() {
         perfFrames = 0;
       }
 
-      if (!isUiBlocking() && !interiorManager.isTransitioning()) {
+      if (!isUiBlocking()) {
         controls.update(delta);
       }
 
-      if (!interiorManager.isIndoor()) {
-        animations.update(delta);
-        areaGates.update(camera);
-        sectionGates.update(camera);
-      }
+      animations.update(delta);
+      areaGates.update(camera);
+      sectionGates.update(camera);
 
       playerAvatar.syncToCamera(camera);
       addCampusTime(delta);
