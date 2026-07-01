@@ -2,7 +2,12 @@ import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { seededRandom } from './procedural/random.js';
 import { isInsideBuildingFootprint } from './buildingFootprints.js';
-import { isStonePath, distanceToNearestPath } from './campusPaths.js';
+import {
+  isStonePath,
+  distanceToNearestPath,
+  POND_CENTER,
+  POND_RADIUS,
+} from './campusPaths.js';
 import { creekCarveAt } from './creek.js';
 
 export { isStonePath } from './campusPaths.js';
@@ -28,6 +33,9 @@ export const HILL_ROLL = 0.5; // rolling relief that grows onto the hillsides (k
 // ── Building pad knobs ──
 export const PAD_HEIGHT = 0; // buildings sit on level pads at the valley floor
 export const PAD_APRON = 4.5; // blend distance from pad edge into the slope
+
+// ── Pond knobs ──
+export const POND_DEPTH = 0.55; // the natural pond sits in a shallow bowl
 
 // ── Colour knobs ──
 export const GRASS_BASE = new THREE.Color(0x5a8a52);
@@ -106,6 +114,18 @@ function rollingRelief(x, z, ringT, damp) {
   return n * amp;
 }
 
+// A shallow natural bowl under the pond so the water reads as sunken, not a
+// plane sitting on the flat. Applied after pads so it wins inside the pond.
+function pondBasin(x, z) {
+  const d = Math.hypot(x - POND_CENTER.x, z - POND_CENTER.z);
+  if (d >= POND_RADIUS) return { weight: 0, floor: 0 };
+  const t = d / POND_RADIUS;
+  return {
+    weight: 1 - smoothstep(0.8, 1.0, t),
+    floor: -POND_DEPTH * (1 - t * t),
+  };
+}
+
 function padBlend(x, z) {
   let blend = 0;
   for (const zone of terrainPads) {
@@ -143,6 +163,10 @@ export function getTerrainHeight(x, z) {
   // Flatten onto building pads (wins over everything so buildings stay level).
   const pb = padBlend(x, z);
   if (pb > 0) h = h * (1 - pb) + PAD_HEIGHT * pb;
+
+  // Sink the pond bowl (overrides the pad so the pond stays natural).
+  const pond = pondBasin(x, z);
+  if (pond.weight > 0) h = h * (1 - pond.weight) + pond.floor * pond.weight;
 
   return h;
 }

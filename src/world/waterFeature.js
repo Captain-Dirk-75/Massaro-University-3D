@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { seededRandom, hashSeed } from './procedural/random.js';
+import { getTerrainHeight } from './ground.js';
 
 // ── Mood knobs ──
 export const POOL_DEEP_COLOR = new THREE.Color(0x2a4a58);
@@ -6,6 +9,17 @@ export const POOL_SHALLOW_COLOR = new THREE.Color(0x4a7a8a);
 export const POOL_SUN_REFLECT = new THREE.Color(0xffd8a8);
 export const RIPPLE_SPEED = 0.85;
 export const RIPPLE_HEIGHT = 0.035;
+
+// ── Natural pond knobs ──
+export const POND_BASE_RADIUS = 4.9; // average radius of the organic outline
+export const POND_ELONGATION = 1.05; // stretch along z (footprint is deeper)
+export const POND_SURFACE_Y = -0.04; // water surface, just below the shore
+export const POND_SHORE_STONES = 16;
+export const POND_REED_CLUSTERS = 9;
+export const POND_LILY_PADS = 4;
+export const SHORE_STONE_COLOR = 0x9a9088;
+export const REED_COLOR = new THREE.Color(0x6f8a48);
+export const LILY_COLOR = new THREE.Color(0x3f6a44);
 
 const waterVertexShader = /* glsl */ `
   uniform float uTime;
@@ -50,47 +64,150 @@ const waterFragmentShader = /* glsl */ `
   }
 `;
 
-function createStoneRim(width, depth, thickness, height) {
-  const group = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({
-    color: 0xc8b8a4,
-    roughness: 0.9,
-  });
-
-  const longSide = new THREE.Mesh(
-    new THREE.BoxGeometry(width + thickness * 2, height, thickness),
-    mat,
+/** Organic pond outline radius at angle a (local units). */
+function pondRadius(a) {
+  return (
+    POND_BASE_RADIUS *
+    (1 + 0.1 * Math.sin(a * 3 + 0.7) + 0.05 * Math.sin(a * 5 + 2) + 0.03 * Math.sin(a * 7))
   );
-  longSide.castShadow = true;
-  longSide.receiveShadow = true;
+}
 
-  const shortSide = new THREE.Mesh(
-    new THREE.BoxGeometry(thickness, height, depth),
-    mat,
+/** Wobbly water surface that reads as a natural pond, not a rectangular pool. */
+function buildPondSurface(material) {
+  const shape = new THREE.Shape();
+  const steps = 48;
+  for (let i = 0; i <= steps; i++) {
+    const a = (i / steps) * Math.PI * 2;
+    const r = pondRadius(a);
+    const x = Math.cos(a) * r;
+    const y = Math.sin(a) * r * POND_ELONGATION;
+    if (i === 0) shape.moveTo(x, y);
+    else shape.lineTo(x, y);
+  }
+  const geo = new THREE.ShapeGeometry(shape, 20);
+  const water = new THREE.Mesh(geo, material);
+  water.rotation.x = -Math.PI / 2; // lay flat; shader keeps a vertical ripple
+  water.position.y = POND_SURFACE_Y;
+  water.renderOrder = 1;
+  return water;
+}
+
+function displaceStone(geo, seed) {
+  const rand = seededRandom(seed);
+  const pos = geo.attributes.position;
+  for (let v = 0; v < pos.count; v++) {
+    pos.setXYZ(
+      v,
+      pos.getX(v) * (0.8 + rand() * 0.5),
+      pos.getY(v) * (0.55 + rand() * 0.4),
+      pos.getZ(v) * (0.8 + rand() * 0.5),
+    );
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/** Scattered shoreline boulders + one mossy focal stone, merged. */
+function buildShoreStones(areaPos) {
+  const rand = seededRandom(4242);
+  const geometries = [];
+
+  for (let i = 0; i < POND_SHORE_STONES; i++) {
+    const a = rand() * Math.PI * 2;
+    const r = pondRadius(a) * (0.96 + rand() * 0.16);
+    const lx = Math.cos(a) * r;
+    const lz = Math.sin(a) * r * POND_ELONGATION;
+    const scale = 0.28 + rand() * 0.4;
+    const y = getTerrainHeight(areaPos.x + lx, areaPos.z + lz) - areaPos.y + scale * 0.2;
+    const geo = displaceStone(new THREE.IcosahedronGeometry(scale, 0), hashSeed(lx, lz));
+    geo.translate(lx, y, lz);
+    geometries.push(geo);
+  }
+
+  // One larger mossy boulder as a natural focal point (replaces the fountain).
+  const bx = pondRadius(0.6) * 0.5;
+  const bz = pondRadius(0.6) * 0.5 * POND_ELONGATION;
+  const by = getTerrainHeight(areaPos.x + bx, areaPos.z + bz) - areaPos.y + 0.2;
+  const boulder = displaceStone(new THREE.IcosahedronGeometry(0.85, 0), 99);
+  boulder.translate(bx, by, bz);
+  geometries.push(boulder);
+
+  const mesh = new THREE.Mesh(
+    mergeGeometries(geometries, false),
+    new THREE.MeshStandardMaterial({
+      color: SHORE_STONE_COLOR,
+      roughness: 0.95,
+      flatShading: true,
+    }),
   );
-  shortSide.castShadow = true;
-  shortSide.receiveShadow = true;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
 
-  const hw = width / 2 + thickness / 2;
-  const hd = depth / 2 + thickness / 2;
+/** Reed tufts around the water's edge. */
+function buildReeds(areaPos) {
+  const rand = seededRandom(707);
+  const blades = [];
+  const bladeGeo = new THREE.CylinderGeometry(0.012, 0.03, 1, 4);
+  bladeGeo.translate(0, 0.5, 0);
 
-  const north = longSide.clone();
-  north.position.set(0, height / 2, -hd);
-  group.add(north);
+  for (let c = 0; c < POND_REED_CLUSTERS; c++) {
+    const a = rand() * Math.PI * 2;
+    const r = pondRadius(a) * (0.98 + rand() * 0.1);
+    const cx = Math.cos(a) * r;
+    const cz = Math.sin(a) * r * POND_ELONGATION;
+    const cy = getTerrainHeight(areaPos.x + cx, areaPos.z + cz) - areaPos.y;
+    const count = 4 + Math.floor(rand() * 4);
+    for (let b = 0; b < count; b++) {
+      const h = 0.5 + rand() * 0.7;
+      const g = bladeGeo.clone();
+      const m = new THREE.Matrix4();
+      const lean = (rand() - 0.5) * 0.5;
+      m.makeRotationZ(lean);
+      m.setPosition(cx + (rand() - 0.5) * 0.5, cy, cz + (rand() - 0.5) * 0.5);
+      g.scale(1, h, 1);
+      g.applyMatrix4(m);
+      blades.push(g);
+    }
+  }
 
-  const south = longSide.clone();
-  south.position.set(0, height / 2, hd);
-  group.add(south);
+  const mesh = new THREE.Mesh(
+    mergeGeometries(blades, false),
+    new THREE.MeshStandardMaterial({
+      color: REED_COLOR,
+      roughness: 0.9,
+      flatShading: true,
+      side: THREE.DoubleSide,
+    }),
+  );
+  mesh.castShadow = true;
+  return mesh;
+}
 
-  const west = shortSide.clone();
-  west.position.set(-hw, height / 2, 0);
-  group.add(west);
-
-  const east = shortSide.clone();
-  east.position.set(hw, height / 2, 0);
-  group.add(east);
-
-  return group;
+/** A few lily pads floating on the surface. */
+function buildLilyPads() {
+  const rand = seededRandom(313);
+  const geometries = [];
+  for (let i = 0; i < POND_LILY_PADS; i++) {
+    const a = rand() * Math.PI * 2;
+    const r = pondRadius(a) * (0.3 + rand() * 0.45);
+    const pad = new THREE.CircleGeometry(0.28 + rand() * 0.22, 10);
+    pad.rotateX(-Math.PI / 2);
+    // small notch not modelled; keep it a simple disc for the low-poly look
+    pad.translate(Math.cos(a) * r, POND_SURFACE_Y + 0.02, Math.sin(a) * r * POND_ELONGATION);
+    geometries.push(pad);
+  }
+  const mesh = new THREE.Mesh(
+    mergeGeometries(geometries, false),
+    new THREE.MeshStandardMaterial({
+      color: LILY_COLOR,
+      roughness: 0.85,
+      side: THREE.DoubleSide,
+    }),
+  );
+  mesh.renderOrder = 2;
+  return mesh;
 }
 
 /**
@@ -123,36 +240,12 @@ export function buildWaterFeature(area) {
   feature.position.set(area.position.x, area.position.y, area.position.z);
   feature.userData.campusAreaId = area.id;
 
-  const poolWidth = 10;
-  const poolDepth = 14;
+  const waterMaterial = createWaterMaterial({ opacity: 0.9 });
 
-  feature.add(createStoneRim(poolWidth, poolDepth, 0.55, 0.28));
-
-  const waterMaterial = createWaterMaterial();
-
-  const water = new THREE.Mesh(
-    new THREE.PlaneGeometry(poolWidth, poolDepth, 48, 64),
-    waterMaterial,
-  );
-  water.rotation.x = -Math.PI / 2;
-  water.position.y = 0.18;
-  feature.add(water);
-
-  const pedestal = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.35, 0.45, 0.6, 10),
-    new THREE.MeshStandardMaterial({ color: 0xb0a090, roughness: 0.85 }),
-  );
-  pedestal.position.set(0, 0.45, 0);
-  pedestal.castShadow = true;
-  feature.add(pedestal);
-
-  const bowl = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.7, 0.5, 0.25, 12),
-    new THREE.MeshStandardMaterial({ color: 0xc0b0a0, roughness: 0.8 }),
-  );
-  bowl.position.set(0, 0.82, 0);
-  bowl.castShadow = true;
-  feature.add(bowl);
+  feature.add(buildPondSurface(waterMaterial));
+  feature.add(buildShoreStones(area.position));
+  feature.add(buildReeds(area.position));
+  feature.add(buildLilyPads());
 
   return { group: feature, waterMaterial };
 }
