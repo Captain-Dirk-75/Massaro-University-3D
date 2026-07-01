@@ -12,8 +12,9 @@ export const FOG_FAR = 104;
 // Low mist pooling in the valley lows (near the pool & creek).
 export const MIST_COLOR = '#eef0ea';
 export const MIST_PATCHES = [
-  { x: -3, z: -19, size: 34, y: 0.55, opacity: 0.1 }, // reflecting pool hollow
-  { x: -12, z: -25, size: 24, y: 0.7, opacity: 0.12 }, // creek / waterfall
+  { x: -2, z: -18, size: 34, y: 0.5, opacity: 0.1 }, // reflecting pool hollow
+  { x: -43, z: -18, size: 20, y: 0.9, opacity: 0.14 }, // waterfall base on the hillside
+  { x: -26, z: -18.5, size: 28, y: 0.5, opacity: 0.08 }, // creek across the valley floor
   { x: 4, z: -2, size: 40, y: 0.5, opacity: 0.07 }, // central quad
 ];
 

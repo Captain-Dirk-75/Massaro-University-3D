@@ -3,7 +3,7 @@ import { createNoise2D } from 'simplex-noise';
 import { seededRandom } from './procedural/random.js';
 import { isInsideBuildingFootprint } from './buildingFootprints.js';
 import { isStonePath, distanceToNearestPath } from './campusPaths.js';
-import { springMoundHeight, creekCarveAt, SPRING_MOUND } from './creek.js';
+import { creekCarveAt } from './creek.js';
 
 export { isStonePath } from './campusPaths.js';
 
@@ -14,20 +14,20 @@ const SEGMENTS = 128;
 // The campus sits on a calm valley floor (flat near 0); gentle green hills rise
 // around it to cradle the sanctuary. Keep slopes soft and walkable.
 export const VALLEY_CENTER = { x: 0, z: -17 };
-export const BASIN_RADIUS = 40; // flat valley floor out to here (holds all buildings)
+export const BASIN_RADIUS = 36; // flat valley floor out to here (holds all buildings)
 export const HILL_RADIUS = 60; // hills reach near-full height by here
-export const HILL_HEIGHT = 10; // valley-wall height
+export const HILL_HEIGHT = 10; // valley-wall height (the creek springs from these)
 export const RIM_RISE = 4.5; // extra backdrop rise past the ring
-export const SOUTH_OPENING = 0.52; // how much the southern wall opens toward the approach
+export const SOUTH_OPENING = 0.5; // how much the southern wall opens toward the approach
 
 // ── Rolling / surface knobs ──
 export const HEIGHT_SCALE = 0.03;
 export const BASIN_ROLL = 0.13; // gentle undulation on the valley floor (well under the stair threshold)
-export const HILL_ROLL = 1.1; // rolling relief that grows onto the hillsides
+export const HILL_ROLL = 0.5; // rolling relief that grows onto the hillsides (kept gentle)
 
 // ── Building pad knobs ──
 export const PAD_HEIGHT = 0; // buildings sit on level pads at the valley floor
-export const PAD_APRON = 3.2; // blend distance from pad edge into the slope
+export const PAD_APRON = 4.5; // blend distance from pad edge into the slope
 
 // ── Colour knobs ──
 export const GRASS_BASE = new THREE.Color(0x5a8a52);
@@ -124,14 +124,12 @@ function padBlend(x, z) {
  * mesh, buildings' pads, paths, planting, props, water, and the player's floor.
  */
 export function getTerrainHeight(x, z) {
-  const mound = springMoundHeight(x, z);
   const { h: baseH, ringT } = valleyBase(x, z);
-  let h = baseH + mound;
+  let h = baseH;
 
   const carve = creekCarveAt(x, z);
-  // Damp fine relief near the creek and on the mound so the channel reads clean.
-  const damp =
-    (1 - 0.85 * carve.influence) * (1 - 0.6 * Math.min(1, mound / SPRING_MOUND.height));
+  // Damp fine relief near the creek so the channel reads clean.
+  const damp = 1 - 0.85 * carve.influence;
   h += rollingRelief(x, z, ringT, damp);
 
   // Stone paths ease gently below the surrounding grade.
