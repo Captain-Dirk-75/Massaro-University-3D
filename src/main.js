@@ -74,7 +74,15 @@ async function bootstrap() {
 
   // Register level pads so the terrain flattens under every building before
   // the ground mesh, planting, props, and player floor sample its height.
-  setTerrainPads(buildingZones);
+  // The pond is excluded — it's a carved basin, not a flat pad, so its pad
+  // wouldn't erase the creek channel that feeds it.
+  setTerrainPads(
+    getBuildingExclusionZones({
+      areas: campus.areas,
+      unifiedBuildings: campus.unifiedBuildings,
+      excludeBuilds: ['water-feature'],
+    }),
+  );
 
   outdoorRoot.add(createGround({ interiorZones: buildingZones }));
   outdoorRoot.add(campus.root);

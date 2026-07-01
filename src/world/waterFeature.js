@@ -232,6 +232,9 @@ export function createWaterMaterial({
     fragmentShader: waterFragmentShader,
     transparent: true,
     side: THREE.DoubleSide,
+    // Transparent water must NOT write depth — otherwise it z-fights with the
+    // banks/rocks it overlaps and smears a discoloured film over them.
+    depthWrite: false,
   });
 }
 
