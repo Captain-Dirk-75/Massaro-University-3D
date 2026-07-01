@@ -126,6 +126,7 @@ function libraryWindowPairs(wall, width, offsets, arched = true) {
 // ── Classical entrance facade (decoration only — see classicalFacade.js) ──
 export const LIBRARY_FACADE = {
   wall: 'south',
+  inscription: 'MASSARO UNIVERSITY',
   bayWidth: 14,
   bayProjection: 0.45,
   columnCount: 4,

@@ -7,7 +7,8 @@ export const FOCAL_POINTS = [
   { id: 'pool-bench-south', type: 'bench', x: 0, z: -11, rotY: Math.PI },
   { id: 'quad-bench', type: 'bench', x: -5, z: 7, rotY: Math.PI * 0.35 },
   { id: 'pool-lantern', type: 'lantern', x: 7, z: -16, rotY: -0.4 },
-  { id: 'contemplation-nook', type: 'nook', x: -8, z: -20, rotY: 0.6 },
+  // On the pond's east shore, the bench facing west out over the water.
+  { id: 'contemplation-nook', type: 'nook', x: 10, z: -18.5, rotY: Math.PI / 2 },
 ];
 
 const WOOD_COLOR = 0x8a7058;
