@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { seededRandom, hashSeed } from './procedural/random.js';
 import { sampleGroundHeight, isStonePath } from './ground.js';
 import { isInsideBuildingFootprint } from './buildingFootprints.js';
+import { isInsidePond } from './campusPaths.js';
 
 // ── Mood knobs ──
 export const ROCK_COUNT = 22;
@@ -34,8 +35,7 @@ function displaceRockGeometry(geometry, seed, strength) {
 function isRockExcluded(wx, wz, buildingZones) {
   if (isStonePath(wx, wz)) return true;
   if (isInsideBuildingFootprint(wx, wz, buildingZones)) return true;
-  if (Math.hypot(wx, wz + 18) < 6.5) return true;
-  if (wz < -10 && Math.abs(wx) < 17) return true;
+  if (isInsidePond(wx, wz)) return true;
   return false;
 }
 

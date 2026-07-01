@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { seededRandom } from './procedural/random.js';
 import { isInsideBuildingFootprint } from './buildingFootprints.js';
+import { isStonePath, isInsidePond, distanceToNearestPath } from './campusPaths.js';
+
+export { isStonePath } from './campusPaths.js';
 
 const GROUND_SIZE = 120;
 const SEGMENTS = 96;
@@ -11,8 +14,11 @@ export const HEIGHT_AMPLITUDE = 0.38;
 export const HEIGHT_SCALE = 0.028;
 export const GRASS_BASE = new THREE.Color(0x5a8a52);
 export const GRASS_VARIATION = 0.12;
+export const MEADOW_LIGHT = new THREE.Color(0x6a9a5a);
+export const MEADOW_STRENGTH = 0.22;
 export const STONE_LIGHT = new THREE.Color(0xc4b8a8);
 export const STONE_DARK = new THREE.Color(0xa89880);
+export const PATH_EDGE_BLEND = 0.55;
 
 const noise2D = createNoise2D(() => seededRandom(90210)());
 
@@ -39,30 +45,6 @@ function noise2(x, y) {
   );
 }
 
-export function isStonePath(wx, wz) {
-  const mainPath = Math.abs(wx) < 3.2 && wz > -22 && wz < 22;
-  const crossPath = Math.abs(wz) < 2.8 && Math.abs(wx) < 18;
-  const poolRing =
-    Math.hypot(wx, wz + 18) > 5.5 && Math.hypot(wx, wz + 18) < 8.5;
-  const libraryPlaza = wz < -12 && wz > -38 && Math.abs(wx) < 18;
-  const libraryApproach = Math.abs(wx) < 4 && wz > -40 && wz < -12;
-
-  if (mainPath || crossPath || poolRing || libraryPlaza || libraryApproach) return true;
-
-  const half = GROUND_SIZE / 2;
-  const u = (wx + half) / GROUND_SIZE;
-  const v = (wz + half) / GROUND_SIZE;
-  const tileU = Math.floor(u * 8);
-  const tileV = Math.floor(v * 8);
-  if (tileU >= 3 && tileU <= 4 && tileV >= 3 && tileV <= 4) {
-    const cx = u * 8 - (tileU + 0.5);
-    const cv = v * 8 - (tileV + 0.5);
-    if (Math.hypot(cx, cv) < 0.42) return true;
-  }
-
-  return false;
-}
-
 export function sampleGroundHeight(wx, wz) {
   const n = noise2D(wx * HEIGHT_SCALE, wz * HEIGHT_SCALE);
   const n2 = noise2D(wx * HEIGHT_SCALE * 2.2 + 40, wz * HEIGHT_SCALE * 2.2 + 40);
@@ -74,21 +56,40 @@ export function sampleGroundHeight(wx, wz) {
     height *= 0.35;
   }
 
+  if (isInsidePond(wx, wz)) {
+    height *= 0.15;
+  }
+
   return height;
 }
 
 function vertexColorAt(wx, wz) {
   const n = noise2(wx * 0.12, wz * 0.12);
   const n2 = noise2(wx * 0.35 + 40, wz * 0.35 + 40);
+  const meadow = noise2(wx * 0.08 - 30, wz * 0.08 + 20);
 
   if (isStonePath(wx, wz)) {
     const blend = n * 0.5 + n2 * 0.3;
     return STONE_DARK.clone().lerp(STONE_LIGHT, blend);
   }
 
+  const pathDist = distanceToNearestPath(wx, wz);
+  const nearPath = pathDist < 2.2;
+  const pathBlend = nearPath ? (1 - pathDist / 2.2) * PATH_EDGE_BLEND : 0;
+
   const color = GRASS_BASE.clone();
   const variation = (n - 0.5) * GRASS_VARIATION + (n2 - 0.5) * 0.06;
   color.offsetHSL(variation * 0.15, variation * 0.2, variation * 0.35);
+
+  if (meadow > 0.58 && !nearPath) {
+    color.lerp(MEADOW_LIGHT, MEADOW_STRENGTH * (meadow - 0.58) * 2.2);
+  }
+
+  if (pathBlend > 0) {
+    const edgeStone = STONE_DARK.clone().lerp(STONE_LIGHT, 0.35);
+    color.lerp(edgeStone, pathBlend * 0.35);
+  }
+
   return color;
 }
 
@@ -103,7 +104,6 @@ export function createGround({ interiorZones = [] } = {}) {
 
   const positions = geometry.attributes.position;
   const colors = new Float32Array(positions.count * 3);
-  const half = GROUND_SIZE / 2;
   const interiorStone = STONE_DARK.clone().lerp(STONE_LIGHT, 0.42);
 
   for (let i = 0; i < positions.count; i++) {

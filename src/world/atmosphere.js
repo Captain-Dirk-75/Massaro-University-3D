@@ -3,11 +3,11 @@ import * as THREE from 'three';
 // ── Mood knobs ──
 export const SKY_TOP = '#7ab8d8';
 export const SKY_MID = '#b8d4ec';
-export const SKY_HORIZON = '#f4e0c8';
-export const SKY_GROUND = '#d8c0a0';
-export const FOG_COLOR = 0xe0d4c4;
-export const FOG_NEAR = 28;
-export const FOG_FAR = 92;
+export const SKY_HORIZON = '#f5e4cc';
+export const SKY_GROUND = '#dcc8a8';
+export const FOG_COLOR = 0xe4d8c8;
+export const FOG_NEAR = 30;
+export const FOG_FAR = 96;
 
 function createSkyTexture() {
   const canvas = document.createElement('canvas');

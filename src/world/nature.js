@@ -5,13 +5,16 @@ import { foliageColor, trunkColor, applyVertexColor } from './procedural/colors.
 import { pickTreeProfile, sampleRange, TREE_PROFILES } from './procedural/treeProfiles.js';
 import { sampleGroundHeight, isStonePath } from './ground.js';
 import { isInsideBuildingFootprint } from './buildingFootprints.js';
+import { isInsidePond, sampleMainSpine, POND_CENTER } from './campusPaths.js';
 
 // ── Mood knobs ──
 export const FOLIAGE_SWAY_AMOUNT = 0.045;
 export const FOLIAGE_SWAY_SPEED = 0.65;
-export const TREE_COUNT_TARGET = 42;
+export const TREE_COUNT_TARGET = 30;
 export const LEAVES_PER_TREE = 18;
 export const BRANCH_FOLIAGE_CLUSTERS = 3;
+export const GROUND_PLANT_COUNT = 48;
+export const FLOWER_ACCENT_RATIO = 0.18;
 
 const FOLIAGE_MATERIAL = new THREE.MeshStandardMaterial({
   vertexColors: true,
@@ -35,10 +38,39 @@ const _quat = new THREE.Quaternion();
 function isExcluded(wx, wz, buildingZones) {
   if (isStonePath(wx, wz)) return true;
   if (isInsideBuildingFootprint(wx, wz, buildingZones)) return true;
-  if (wz < -10 && Math.abs(wx) < 18) return true;
-  if (Math.hypot(wx, wz + 18) < 7) return true;
+  if (isInsidePond(wx, wz)) return true;
   return false;
 }
+
+/** Intentional planting clusters — groves, avenues, entrance frames. */
+const TREE_CLUSTERS = [
+  { type: 'avenue', side: -1, offset: 5.4, samples: [0.12, 0.28, 0.42, 0.56, 0.68], scale: [0.9, 1.15] },
+  { type: 'avenue', side: 1, offset: 5.4, samples: [0.14, 0.3, 0.44, 0.58, 0.7], scale: [0.88, 1.12] },
+  { type: 'grove', cx: -14, cz: 18, radius: 5, count: 4, scale: [0.75, 1.0] },
+  { type: 'grove', cx: 14, cz: 20, radius: 4.5, count: 3, scale: [0.8, 1.05] },
+  { type: 'grove', cx: -32, cz: -2, radius: 5, count: 4, scale: [0.82, 1.08] },
+  { type: 'grove', cx: 30, cz: -4, radius: 4, count: 3, scale: [0.78, 1.0] },
+  { type: 'frame', spots: [[-7, -39], [7, -39], [-5.5, -41], [5.5, -41]], scale: [0.7, 0.95] },
+  { type: 'frame', spots: [[16, 9.5], [23, 12], [17, 13], [24, 10]], scale: [0.65, 0.9] },
+  { type: 'frame', spots: [[-6, -12], [6, -12], [-8, -14], [8, -14]], scale: [0.6, 0.85] },
+];
+
+const BUSH_CLUSTERS = [
+  { cx: POND_CENTER.x - 7, cz: POND_CENTER.z + 1, count: 3, spread: 2.2 },
+  { cx: POND_CENTER.x + 7, cz: POND_CENTER.z + 1, count: 3, spread: 2.2 },
+  { cx: 0, cz: -40, count: 2, spread: 3.5 },
+  { cx: 20, cz: 9, count: 2, spread: 2.5 },
+  { cx: -4, cz: 6, count: 2, spread: 2.0 },
+  { cx: 10, cz: -2, count: 2, spread: 2.5 },
+];
+
+const GROUND_PLANT_CLUSTERS = [
+  { cx: POND_CENTER.x - 5, cz: POND_CENTER.z + 5, count: 8, spread: 3.5, flowers: true },
+  { cx: POND_CENTER.x + 5, cz: POND_CENTER.z + 5, count: 8, spread: 3.5, flowers: true },
+  { cx: 0, cz: 2, count: 6, spread: 4, flowers: false },
+  { cx: -3, cz: -30, count: 5, spread: 3, flowers: false },
+  { cx: 14, cz: 8, count: 4, spread: 2.5, flowers: true },
+];
 
 function profileShift(profile) {
   return {
@@ -396,82 +428,207 @@ function createBushInstances(bushDefs) {
   return { group, swayTargets };
 }
 
-function scatterTrees(buildingZones) {
+function pushTree(trees, x, z, scale, seed, lean) {
+  trees.push({ x, z, scale, seed, lean });
+}
+
+function placeClusterTrees(buildingZones) {
   const rand = seededRandom(42);
   const trees = [];
-  const anchorSpots = [
-    [-24, 10], [-20, 20], [-16, -2], [-28, -4], [-22, -16],
-    [24, 10], [20, 18], [16, -4], [28, 2], [22, -14],
-    [-12, 24], [12, 24], [-10, -18], [10, -18], [0, 26],
-    [-32, 12], [32, 12], [-30, -12], [30, -10],
-    [-36, 0], [36, 0], [-8, 14], [8, 14],
-  ];
 
-  for (const [ax, az] of anchorSpots) {
-    const x = ax + (rand() - 0.5) * 4.2;
-    const z = az + (rand() - 0.5) * 4.2;
-    if (isExcluded(x, z, buildingZones)) continue;
-
-    trees.push({
-      x,
-      z,
-      scale: 0.82 + rand() * 0.9,
-      seed: hashSeed(x, z),
-      lean: {
-        x: (rand() - 0.5) * 0.08,
-        z: (rand() - 0.5) * 0.08,
-      },
-    });
+  for (const cluster of TREE_CLUSTERS) {
+    if (cluster.type === 'avenue') {
+      for (const t of cluster.samples) {
+        const spine = sampleMainSpine(t);
+        const perpX = cluster.side * cluster.offset;
+        const x = spine.x + perpX + (rand() - 0.5) * 1.2;
+        const z = spine.z + (rand() - 0.5) * 1.4;
+        if (isExcluded(x, z, buildingZones)) continue;
+        pushTree(trees, x, z,
+          cluster.scale[0] + rand() * (cluster.scale[1] - cluster.scale[0]),
+          hashSeed(x, z),
+          { x: (rand() - 0.5) * 0.06, z: (rand() - 0.5) * 0.06 },
+        );
+      }
+    } else if (cluster.type === 'grove') {
+      for (let i = 0; i < cluster.count; i++) {
+        const angle = rand() * Math.PI * 2;
+        const dist = rand() * cluster.radius;
+        const x = cluster.cx + Math.cos(angle) * dist;
+        const z = cluster.cz + Math.sin(angle) * dist;
+        if (isExcluded(x, z, buildingZones)) continue;
+        pushTree(trees, x, z,
+          cluster.scale[0] + rand() * (cluster.scale[1] - cluster.scale[0]),
+          hashSeed(x, z) + i,
+          { x: (rand() - 0.5) * 0.08, z: (rand() - 0.5) * 0.08 },
+        );
+      }
+    } else if (cluster.type === 'frame') {
+      for (const [fx, fz] of cluster.spots) {
+        const x = fx + (rand() - 0.5) * 1.0;
+        const z = fz + (rand() - 0.5) * 1.0;
+        if (isExcluded(x, z, buildingZones)) continue;
+        pushTree(trees, x, z,
+          cluster.scale[0] + rand() * (cluster.scale[1] - cluster.scale[0]),
+          hashSeed(x, z),
+          { x: (rand() - 0.5) * 0.05, z: (rand() - 0.5) * 0.05 },
+        );
+      }
+    }
   }
 
   while (trees.length < TREE_COUNT_TARGET) {
-    const x = (rand() - 0.5) * 58;
-    const z = (rand() - 0.5) * 52;
+    const x = (rand() - 0.5) * 50;
+    const z = (rand() - 0.5) * 46;
     if (isExcluded(x, z, buildingZones)) continue;
-
-    const tooClose = trees.some(
-      (t) => Math.hypot(t.x - x, t.z - z) < 3.0,
-    );
+    const tooClose = trees.some((t) => Math.hypot(t.x - x, t.z - z) < 3.5);
     if (tooClose) continue;
-
-    trees.push({
-      x,
-      z,
-      scale: 0.68 + rand() * 0.78,
-      seed: hashSeed(x, z) + trees.length,
-      lean: {
-        x: (rand() - 0.5) * 0.1,
-        z: (rand() - 0.5) * 0.1,
-      },
-    });
+    pushTree(trees, x, z,
+      0.65 + rand() * 0.7,
+      hashSeed(x, z) + trees.length,
+      { x: (rand() - 0.5) * 0.1, z: (rand() - 0.5) * 0.1 },
+    );
   }
 
   return trees;
 }
 
-function scatterBushes(buildingZones) {
+function placeClusterBushes(buildingZones) {
   const rand = seededRandom(200);
   const bushes = [];
 
-  for (let i = 0; i < 32; i++) {
-    const x = (rand() - 0.5) * 54;
-    const z = (rand() - 0.5) * 48;
-    if (isExcluded(x, z, buildingZones)) continue;
-
-    bushes.push({
-      x,
-      z,
-      scale: 0.5 + rand() * 0.62,
-      seed: 300 + i,
-    });
+  for (const cluster of BUSH_CLUSTERS) {
+    for (let i = 0; i < cluster.count; i++) {
+      const angle = rand() * Math.PI * 2;
+      const dist = rand() * cluster.spread;
+      const x = cluster.cx + Math.cos(angle) * dist;
+      const z = cluster.cz + Math.sin(angle) * dist;
+      if (isExcluded(x, z, buildingZones)) continue;
+      bushes.push({
+        x,
+        z,
+        scale: 0.45 + rand() * 0.5,
+        seed: 300 + bushes.length,
+      });
+    }
   }
 
   return bushes;
 }
 
+function flowerColor(rand) {
+  const hue = rand() > 0.5 ? 0.12 : 0.92;
+  return new THREE.Color().setHSL(hue, 0.45 + rand() * 0.2, 0.55 + rand() * 0.12);
+}
+
+function createGroundPlants(buildingZones) {
+  const rand = seededRandom(501);
+  const group = new THREE.Group();
+  const swayTargets = [];
+  const shrubGeo = new THREE.IcosahedronGeometry(0.22, 1);
+  const flowerGeo = new THREE.ConeGeometry(0.12, 0.28, 4);
+  flowerGeo.rotateX(Math.PI);
+
+  const shrubMat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.92,
+    flatShading: true,
+  });
+  const flowerMat = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.88,
+    flatShading: true,
+  });
+
+  const placements = [];
+
+  for (const cluster of GROUND_PLANT_CLUSTERS) {
+    for (let i = 0; i < cluster.count; i++) {
+      const angle = rand() * Math.PI * 2;
+      const dist = rand() * cluster.spread;
+      const x = cluster.cx + Math.cos(angle) * dist;
+      const z = cluster.cz + Math.sin(angle) * dist;
+      if (isExcluded(x, z, buildingZones)) continue;
+      placements.push({
+        x,
+        z,
+        isFlower: cluster.flowers && rand() < FLOWER_ACCENT_RATIO,
+        scale: 0.55 + rand() * 0.55,
+        seed: 600 + placements.length,
+      });
+    }
+  }
+
+  while (placements.length < GROUND_PLANT_COUNT) {
+    const x = (rand() - 0.5) * 44;
+    const z = (rand() - 0.5) * 40;
+    if (isExcluded(x, z, buildingZones)) continue;
+    const nearCluster = placements.some((p) => Math.hypot(p.x - x, p.z - z) < 1.8);
+    if (nearCluster) continue;
+    placements.push({
+      x,
+      z,
+      isFlower: rand() < FLOWER_ACCENT_RATIO * 0.5,
+      scale: 0.5 + rand() * 0.45,
+      seed: 600 + placements.length,
+    });
+  }
+
+  const shrubs = placements.filter((p) => !p.isFlower);
+  const flowers = placements.filter((p) => p.isFlower);
+
+  if (shrubs.length > 0) {
+    const mesh = new THREE.InstancedMesh(shrubGeo, shrubMat, shrubs.length);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+
+    shrubs.forEach((p, i) => {
+      const y = sampleGroundHeight(p.x, p.z);
+      dummy.position.set(p.x, y + 0.12 * p.scale, p.z);
+      dummy.scale.setScalar(p.scale);
+      dummy.rotation.y = seededRandom(p.seed)() * Math.PI * 2;
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      foliageColor(seededRandom(p.seed), 0.08).toArray(color);
+      mesh.setColorAt(i, color);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    mesh.userData.swayPhase = 0.4;
+    mesh.userData.swayAmount = FOLIAGE_SWAY_AMOUNT * 0.25;
+    group.add(mesh);
+    swayTargets.push(mesh);
+  }
+
+  if (flowers.length > 0) {
+    const mesh = new THREE.InstancedMesh(flowerGeo, flowerMat, flowers.length);
+    mesh.castShadow = true;
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+
+    flowers.forEach((p, i) => {
+      const y = sampleGroundHeight(p.x, p.z);
+      dummy.position.set(p.x, y + 0.08, p.z);
+      dummy.scale.setScalar(p.scale * 0.9);
+      dummy.rotation.y = seededRandom(p.seed)() * Math.PI * 2;
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      flowerColor(seededRandom(p.seed)).toArray(color);
+      mesh.setColorAt(i, color);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    group.add(mesh);
+  }
+
+  return { group, swayTargets };
+}
+
 export function createNature({ buildingZones = [] } = {}) {
-  const treeDefs = scatterTrees(buildingZones);
-  const bushes = scatterBushes(buildingZones);
+  const treeDefs = placeClusterTrees(buildingZones);
+  const bushes = placeClusterBushes(buildingZones);
 
   const group = new THREE.Group();
   const swayTargets = [];
@@ -487,6 +644,10 @@ export function createNature({ buildingZones = [] } = {}) {
   const bushResult = createBushInstances(bushes);
   group.add(bushResult.group);
   swayTargets.push(...bushResult.swayTargets);
+
+  const groundPlants = createGroundPlants(buildingZones);
+  group.add(groundPlants.group);
+  swayTargets.push(...groundPlants.swayTargets);
 
   const treeColliders = treeDefs.map((def) => ({
     x: def.x,
