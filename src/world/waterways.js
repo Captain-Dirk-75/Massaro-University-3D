@@ -32,30 +32,63 @@ export const BRIDGE_WOOD_DARK = 0x6f543a;
 
 const UP = new THREE.Vector3(0, 1, 0);
 
-/** One flat, horizontally-oriented water quad aligned to a stream segment. */
-function buildStreamSegment(a, b, material) {
-  const dx = b.x - a.x;
-  const dz = b.z - a.z;
-  const len = Math.hypot(dx, dz);
-  if (len < 1e-3) return null;
+/**
+ * One continuous water ribbon that follows the streambed down the terrain.
+ * Each cross-section sits at the interpolated bed height, so the surface tilts
+ * with the slope and hugs the carved channel instead of floating as flat tiles.
+ */
+function buildStreamRibbon(nodes, material) {
+  if (nodes.length < 2) return null;
+  const hw = CREEK_HALF_WIDTH * 1.05;
 
-  const width = CREEK_HALF_WIDTH * 2 * 1.05;
-  // Overlap ends slightly so bends don't gap.
-  const geo = new THREE.PlaneGeometry(width, len + 0.4, 2, Math.max(2, Math.round(len * 2)));
+  const positions = [];
+  const uvs = [];
+  const index = [];
 
-  const forward = new THREE.Vector3(dx, 0, dz).divideScalar(len);
-  // right = forward × UP keeps the basis right-handed (det +1) so the quad lies
-  // FLAT with its normal up; the shader's ripple (local +z) then bobs vertically.
-  const right = new THREE.Vector3().crossVectors(forward, UP).normalize();
-  const basis = new THREE.Matrix4().makeBasis(right, forward, UP);
+  const lengths = [0];
+  for (let i = 1; i < nodes.length; i++) {
+    lengths.push(
+      lengths[i - 1] +
+        Math.hypot(nodes[i].x - nodes[i - 1].x, nodes[i].z - nodes[i - 1].z),
+    );
+  }
+  const total = lengths[lengths.length - 1] || 1;
+
+  for (let i = 0; i < nodes.length; i++) {
+    const p = nodes[i];
+    const prev = nodes[Math.max(0, i - 1)];
+    const next = nodes[Math.min(nodes.length - 1, i + 1)];
+    let tx = next.x - prev.x;
+    let tz = next.z - prev.z;
+    const tl = Math.hypot(tx, tz) || 1;
+    tx /= tl;
+    tz /= tl;
+    // Perpendicular (across the stream), horizontal.
+    const px = -tz * hw;
+    const pz = tx * hw;
+    const y = p.bed + CREEK_SURFACE_LIFT;
+
+    positions.push(p.x + px, y, p.z + pz); // left
+    positions.push(p.x - px, y, p.z - pz); // right
+    const v = lengths[i] / total;
+    uvs.push(0, v, 1, v);
+  }
+
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const a = i * 2;
+    const b = i * 2 + 1;
+    const c = (i + 1) * 2;
+    const d = (i + 1) * 2 + 1;
+    index.push(a, b, d, a, d, c);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(index);
+  geo.computeVertexNormals();
 
   const mesh = new THREE.Mesh(geo, material);
-  mesh.quaternion.setFromRotationMatrix(basis);
-  mesh.position.set(
-    (a.x + b.x) / 2,
-    (a.bed + b.bed) / 2 + CREEK_SURFACE_LIFT,
-    (a.z + b.z) / 2,
-  );
   mesh.renderOrder = 1;
   return mesh;
 }
@@ -282,12 +315,12 @@ export function createWaterways() {
   });
   waterMaterials.push(streamMat);
 
-  // Stream segments, skipping the waterfall gap (handled separately).
-  for (let i = 0; i < CREEK_NODES.length - 1; i++) {
-    if (i === WATERFALL_SEGMENT) continue;
-    const seg = buildStreamSegment(CREEK_NODES[i], CREEK_NODES[i + 1], streamMat);
-    if (seg) group.add(seg);
-  }
+  // Two continuous ribbons that follow the terrain: the upper gully above the
+  // waterfall, and the lower stream from the plunge pool across the valley.
+  const upper = buildStreamRibbon(CREEK_NODES.slice(0, WATERFALL_SEGMENT + 1), streamMat);
+  if (upper) group.add(upper);
+  const lower = buildStreamRibbon(CREEK_NODES.slice(WATERFALL_SEGMENT + 1), streamMat);
+  if (lower) group.add(lower);
 
   const fallMat = createWaterMaterial({
     deep: CREEK_SHALLOW,
