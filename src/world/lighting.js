@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 
 // ── Mood knobs ──
-export const SUN_COLOR = 0xffc878;
-export const SUN_INTENSITY = 1.48;
+export const SUN_COLOR = 0xffd088;
+export const SUN_INTENSITY = 1.42;
 export const AMBIENT_COLOR = 0xfff4e8;
-export const AMBIENT_INTENSITY = 0.18;
+export const AMBIENT_INTENSITY = 0.2;
 export const HEMI_SKY = 0xd8e8f8;
-export const HEMI_GROUND = 0xa89070;
-export const HEMI_INTENSITY = 0.5;
+export const HEMI_GROUND = 0xb09878;
+export const HEMI_INTENSITY = 0.52;
 
 /**
  * Warm morning key light with soft hemisphere fill.
@@ -38,7 +38,7 @@ export function createLighting() {
   sun.shadow.camera.bottom = -55;
   sun.shadow.bias = -0.00025;
   sun.shadow.normalBias = 0.02;
-  sun.shadow.radius = 5;
+  sun.shadow.radius = 6;
 
   group.add(sun);
 

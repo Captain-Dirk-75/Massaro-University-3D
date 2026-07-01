@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-07-01 (return to Guest tier)
+**Last updated:** 2026-07-01 (campus landscape dressing)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-07-01 — Campus landscape: curved paths (`campusPaths.js`), cluster planting + instanced ground plants, focal props (benches, lantern, nook), ground/atmosphere polish
 - 2026-07-01 — Return to Guest: `cancelSubscription()` in checkout + "Return to Guest" in store; reuses `setSubscription('guest', null)` and live gate refresh/eject
 - 2026-06-30 — Fix black screen after scene-swap removal: render loop must call `outdoorComposer.composer.render()` (not `.render()` on the wrapper object)
 - 2026-06-30 — Removed dead scene-swap interior system (`src/world/interiors/`, old `library.js`, `fadeOverlay`, empty `interiors.js` seed); library/pavilion stay unified-world only

@@ -15,6 +15,7 @@ import { createSectionGates } from './world/buildings/sectionGates.js';
 import { createAreaGates } from './world/areaGates.js';
 import { createNature } from './world/nature.js';
 import { createRocks } from './world/rocks.js';
+import { createLandscapeProps } from './world/landscapeProps.js';
 import { createMotes } from './world/motes.js';
 import { createClouds } from './world/clouds.js';
 import { createBirds } from './world/birds.js';
@@ -79,6 +80,9 @@ async function bootstrap() {
 
   const rocks = createRocks({ buildingZones });
   outdoorRoot.add(rocks.group);
+
+  const landscapeProps = createLandscapeProps();
+  outdoorRoot.add(landscapeProps.group);
 
   const worldColliders = createWorldColliders({
     treeColliders,
