@@ -6,7 +6,7 @@ import {
   findTierById,
 } from '../platform/index.js';
 import { hasAccess, getAccessLabel } from '../commerce/access.js';
-import { purchaseItem, subscribeToTier } from '../commerce/checkout.js';
+import { purchaseItem, subscribeToTier, cancelSubscription } from '../commerce/checkout.js';
 import {
   playerState,
   recordItemPurchase,
@@ -301,6 +301,16 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
       color: #d8d0c4;
     }
 
+    .store-btn--cancel {
+      background: rgba(140, 90, 90, 0.18);
+      border-color: rgba(200, 140, 140, 0.28);
+      color: #e8c8c8;
+    }
+
+    .store-btn--cancel:hover {
+      background: rgba(140, 90, 90, 0.32);
+    }
+
     .store-btn:disabled {
       opacity: 0.45;
       cursor: not-allowed;
@@ -440,7 +450,13 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
         <div class="store-tier-card__actions">`;
 
       if (isGuest) {
-        html += `<p class="store-tier-card__free">Free — no subscription needed</p>`;
+        if (isActive) {
+          html += `<p class="store-tier-card__free">Free — no subscription needed</p>`;
+        } else {
+          html += `<button type="button" class="store-btn store-btn--cancel" data-return-guest>
+              Return to Guest
+            </button>`;
+        }
       } else {
         html += `<button type="button" class="store-btn" data-subscribe-tier="${tier.id}" data-period="monthly"
             ${isActive && playerState.commerce.subscriptionPeriod === 'monthly' ? 'disabled' : ''}>
@@ -563,11 +579,26 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
     `;
   }
 
+  function renderConfirmCancel() {
+    const activeTier = findTierById(playerState.commerce.activeTierId);
+    body.innerHTML = `
+      <div class="store-confirm">
+        <button type="button" class="store-btn store-btn--secondary store-detail__back" data-back-catalog>← Back</button>
+        <p>Cancel your <strong>${activeTier?.name ?? 'paid'}</strong> membership and return to the free <strong>Guest</strong> tier?</p>
+        <p class="store-note">Gated areas (Patron Garden, Upper Archive, and tier-only content) will lock immediately. Individually purchased items stay yours.</p>
+        <div class="store-confirm__actions">
+          <button type="button" class="store-btn store-btn--cancel" data-confirm-cancel>Confirm — return to Guest</button>
+        </div>
+      </div>
+    `;
+  }
+
   function render() {
     if (view.mode === 'catalog') renderCatalog();
     else if (view.mode === 'item') renderItemDetail(view.itemId);
     else if (view.mode === 'confirm-buy') renderConfirmPurchase(view.itemId);
     else if (view.mode === 'confirm-subscribe') renderConfirmSubscribe(view.tierId, view.period);
+    else if (view.mode === 'confirm-cancel') renderConfirmCancel();
   }
 
   body.addEventListener('click', async (event) => {
@@ -615,10 +646,27 @@ export function createStorePanel({ onOpenChange, onCommerceChange }) {
       return;
     }
 
+    if (target.matches('[data-return-guest]')) {
+      view = { mode: 'confirm-cancel' };
+      render();
+      return;
+    }
+
     const confirmSub = target.dataset?.confirmSubscribe;
     const subPeriod = target.dataset?.period;
     if (confirmSub && subPeriod) {
       const result = await subscribeToTier(confirmSub, subPeriod);
+      if (result.success) {
+        await setSubscription(result.tierId, result.period);
+        notifyCommerce();
+        view = { mode: 'catalog' };
+      }
+      render();
+      return;
+    }
+
+    if (target.matches('[data-confirm-cancel]')) {
+      const result = await cancelSubscription();
       if (result.success) {
         await setSubscription(result.tierId, result.period);
         notifyCommerce();
