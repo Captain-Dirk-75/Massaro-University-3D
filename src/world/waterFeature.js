@@ -34,6 +34,7 @@ const waterFragmentShader = /* glsl */ `
   uniform vec3 uShallowColor;
   uniform vec3 uSunColor;
   uniform float uTime;
+  uniform float uOpacity;
   varying vec2 vUv;
   varying vec3 vWorldPos;
   varying float vWave;
@@ -45,8 +46,7 @@ const waterFragmentShader = /* glsl */ `
     float shimmer = sin(vUv.x * 40.0 + uTime * 2.0) * sin(vUv.y * 35.0 + uTime * 1.5);
     waterColor += uSunColor * shimmer * 0.04;
 
-    float alpha = 0.88;
-    gl_FragColor = vec4(waterColor, alpha);
+    gl_FragColor = vec4(waterColor, uOpacity);
   }
 `;
 
@@ -93,6 +93,31 @@ function createStoneRim(width, depth, thickness, height) {
   return group;
 }
 
+/**
+ * Shared animated-water material — reused by the pool, the creek, and the
+ * waterfall so all water reads cohesively. Drive `uniforms.uTime` each frame.
+ */
+export function createWaterMaterial({
+  deep = POOL_DEEP_COLOR,
+  shallow = POOL_SHALLOW_COLOR,
+  sun = POOL_SUN_REFLECT,
+  opacity = 0.88,
+} = {}) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uDeepColor: { value: deep },
+      uShallowColor: { value: shallow },
+      uSunColor: { value: sun },
+      uOpacity: { value: opacity },
+    },
+    vertexShader: waterVertexShader,
+    fragmentShader: waterFragmentShader,
+    transparent: true,
+    side: THREE.DoubleSide,
+  });
+}
+
 export function buildWaterFeature(area) {
   const feature = new THREE.Group();
   feature.position.set(area.position.x, area.position.y, area.position.z);
@@ -103,18 +128,7 @@ export function buildWaterFeature(area) {
 
   feature.add(createStoneRim(poolWidth, poolDepth, 0.55, 0.28));
 
-  const waterMaterial = new THREE.ShaderMaterial({
-    uniforms: {
-      uTime: { value: 0 },
-      uDeepColor: { value: POOL_DEEP_COLOR },
-      uShallowColor: { value: POOL_SHALLOW_COLOR },
-      uSunColor: { value: POOL_SUN_REFLECT },
-    },
-    vertexShader: waterVertexShader,
-    fragmentShader: waterFragmentShader,
-    transparent: true,
-    side: THREE.DoubleSide,
-  });
+  const waterMaterial = createWaterMaterial();
 
   const water = new THREE.Mesh(
     new THREE.PlaneGeometry(poolWidth, poolDepth, 48, 64),
