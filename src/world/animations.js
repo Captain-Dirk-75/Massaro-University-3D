@@ -74,7 +74,6 @@ export function createWorldAnimations({
   waterMaterial,
   waterMaterials = [],
   waterfallMist,
-  groundMist,
   motes,
   clouds,
   birds,
@@ -112,10 +111,6 @@ export function createWorldAnimations({
       }
       points.geometry.attributes.position.needsUpdate = true;
       points.material.opacity = 0.24 + 0.06 * Math.sin(elapsed * 0.8);
-    }
-
-    if (groundMist) {
-      groundMist.update(elapsed);
     }
 
     if (motes) {
