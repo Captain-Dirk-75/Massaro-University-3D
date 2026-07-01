@@ -55,6 +55,21 @@ export async function subscribeToTier(tierId, period) {
   };
 }
 
+/**
+ * Cancel the active paid membership and return to the free Guest tier.
+ * Simulated today; a real backend would call the payment provider's cancel API.
+ */
+export async function cancelSubscription() {
+  await simulatePaymentDelay();
+
+  return {
+    success: true,
+    tierId: 'guest',
+    period: null,
+    type: 'cancellation',
+  };
+}
+
 function simulatePaymentDelay() {
   return new Promise((resolve) => setTimeout(resolve, 400));
 }

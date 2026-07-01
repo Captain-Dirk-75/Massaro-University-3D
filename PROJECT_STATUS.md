@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-06-30 (remove scene-swap interior dead code)
+**Last updated:** 2026-07-01 (return to Guest tier)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-07-01 — Return to Guest: `cancelSubscription()` in checkout + "Return to Guest" in store; reuses `setSubscription('guest', null)` and live gate refresh/eject
 - 2026-06-30 — Fix black screen after scene-swap removal: render loop must call `outdoorComposer.composer.render()` (not `.render()` on the wrapper object)
 - 2026-06-30 — Removed dead scene-swap interior system (`src/world/interiors/`, old `library.js`, `fadeOverlay`, empty `interiors.js` seed); library/pavilion stay unified-world only
 - 2026-06-30 — Library story height 4.0 → 4.2 m per floor (8.4 m total); portico columns scaled; stair snap synced
