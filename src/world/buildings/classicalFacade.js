@@ -147,6 +147,56 @@ function buildDoorTrim(group, cfg, faceZ, outward, storyHeight, palette) {
 }
 
 /**
+ * Neo-Classical frieze inscription — engraved Roman capitals on the entablature,
+ * centred on the portico. Rendered to a canvas texture on a thin plane.
+ */
+function buildInscription(text, cfg, y, z, outward, group) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 2048;
+  canvas.height = 176;
+  const ctx = canvas.getContext('2d');
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  try {
+    ctx.letterSpacing = '20px'; // Trajan-like generous spacing
+  } catch {
+    /* older canvas — spacing unsupported, still renders */
+  }
+  ctx.font = "700 118px Georgia, 'Times New Roman', 'Palatino Linotype', serif";
+
+  const measured = ctx.measureText(text).width || 1;
+  const scaleX = Math.min(1, 1900 / measured); // keep it inside the frieze
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scaleX, 1);
+  ctx.fillStyle = 'rgba(255, 250, 240, 0.4)'; // faint highlight = shallow engrave
+  ctx.fillText(text, 0, 3);
+  ctx.fillStyle = '#3a2c20'; // dark timber, reads on light stone
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+
+  const w = cfg.bayWidth * 0.62;
+  const h = w * (canvas.height / canvas.width);
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(w, h),
+    new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }),
+  );
+  plane.position.set(0, y, z);
+  plane.rotation.y = outward > 0 ? 0 : Math.PI; // face outward from the wall
+  plane.renderOrder = 4;
+  group.add(plane);
+}
+
+/**
  * Classical portico — DECORATION ONLY. Never replaces structural walls.
  * Columns frame the doorway; no colliders; sits in front of the real wall.
  */
@@ -205,6 +255,17 @@ export function buildClassicalFacade({
   );
   entablature.position.set(0, columnCrownY + cfg.entablatureHeight / 2, porticoZ);
   facadeGroup.add(entablature);
+
+  if (cfg.inscription) {
+    buildInscription(
+      cfg.inscription,
+      cfg,
+      columnCrownY + cfg.entablatureHeight / 2 - 0.05,
+      porticoZ + outward * (0.25 + 0.03),
+      outward,
+      facadeGroup,
+    );
+  }
 
   for (const x of columnPositions(cfg)) {
     const col = createFlutedColumn(cfg.columnHeight, cfg.columnRadius, palette);

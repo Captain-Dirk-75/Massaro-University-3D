@@ -5,12 +5,17 @@ export const BUILDING_EXCLUSION_MARGIN = 1.0;
  * Build XZ exclusion rectangles for procedural scatter (trees, bushes, rocks).
  * Uses campus area footprints plus unified createBuilding() results.
  */
-export function getBuildingExclusionZones({ areas = [], unifiedBuildings = [] } = {}) {
+export function getBuildingExclusionZones({
+  areas = [],
+  unifiedBuildings = [],
+  excludeBuilds = [],
+} = {}) {
   const margin = BUILDING_EXCLUSION_MARGIN;
   const zones = [];
 
   for (const area of areas) {
     if (!area.build || !area.footprint) continue;
+    if (excludeBuilds.includes(area.build)) continue;
     const hw = area.footprint.width / 2 + margin;
     const hd = area.footprint.depth / 2 + margin;
     zones.push({

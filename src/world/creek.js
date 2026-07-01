@@ -41,7 +41,7 @@ export const CREEK_NODES = [
   { x: -24.0, z: -19.0, bed: -0.05 },
   { x: -15.0, z: -18.6, bed: -0.04 },
   { x: -9.0, z: -18.2, bed: -0.02 },
-  { x: -5.8, z: -18.0, bed: -0.04 }, // spills into the pond at its west shore
+  { x: -4.6, z: -18.0, bed: -0.05 }, // spills into the pond, overlapping its west water
 ];
 
 /** Node index at the top of the waterfall; the segment to index+1 is the fall. */

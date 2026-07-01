@@ -6,7 +6,7 @@ import { createRenderLoop } from './core/loop.js';
 import { createFirstPersonControls } from './controls/firstPerson.js';
 import { createWorldColliders } from './world/collisionVolumes.js';
 import { createInteractionSystem } from './controls/interaction.js';
-import { applyAtmosphere, createGroundMist } from './world/atmosphere.js';
+import { applyAtmosphere } from './world/atmosphere.js';
 import { createGround, setTerrainPads, getTerrainHeight } from './world/ground.js';
 import { createWaterways } from './world/waterways.js';
 import { createLighting } from './world/lighting.js';
@@ -74,16 +74,21 @@ async function bootstrap() {
 
   // Register level pads so the terrain flattens under every building before
   // the ground mesh, planting, props, and player floor sample its height.
-  setTerrainPads(buildingZones);
+  // The pond is excluded — it's a carved basin, not a flat pad, so its pad
+  // wouldn't erase the creek channel that feeds it.
+  setTerrainPads(
+    getBuildingExclusionZones({
+      areas: campus.areas,
+      unifiedBuildings: campus.unifiedBuildings,
+      excludeBuilds: ['water-feature'],
+    }),
+  );
 
   outdoorRoot.add(createGround({ interiorZones: buildingZones }));
   outdoorRoot.add(campus.root);
 
   const waterways = createWaterways();
   outdoorRoot.add(waterways.group);
-
-  const groundMist = createGroundMist();
-  outdoorRoot.add(groundMist.group);
 
   const { group: nature, swayTargets, perches: treePerches, treeColliders } =
     createNature({ buildingZones });
@@ -129,7 +134,6 @@ async function bootstrap() {
     waterMaterial: campus.waterMaterial,
     waterMaterials: waterways.waterMaterials,
     waterfallMist: waterways.mist,
-    groundMist,
     motes,
     clouds,
     birds,
