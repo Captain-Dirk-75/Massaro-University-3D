@@ -22,30 +22,73 @@ export const MIST_RISE_SPEED = 0.5;
 export const MIST_GLOW = new THREE.Color(0xeef2f0);
 export const BANK_STONE_COLOR = 0x9a9088;
 
+// ── Bridge knobs ──
+export const BRIDGE_NODE = 8; // which creek node the little bridge crosses
+export const BRIDGE_LENGTH = 5.4; // span across the creek (bank to bank)
+export const BRIDGE_WIDTH = 1.5;
+export const BRIDGE_ARCH = 0.5; // rise at the crown
+export const BRIDGE_WOOD = 0x8a6a4a;
+export const BRIDGE_WOOD_DARK = 0x6f543a;
+
 const UP = new THREE.Vector3(0, 1, 0);
 
-/** One flat, horizontally-oriented water quad aligned to a stream segment. */
-function buildStreamSegment(a, b, material) {
-  const dx = b.x - a.x;
-  const dz = b.z - a.z;
-  const len = Math.hypot(dx, dz);
-  if (len < 1e-3) return null;
+/**
+ * One continuous water ribbon that follows the streambed down the terrain.
+ * Each cross-section sits at the interpolated bed height, so the surface tilts
+ * with the slope and hugs the carved channel instead of floating as flat tiles.
+ */
+function buildStreamRibbon(nodes, material) {
+  if (nodes.length < 2) return null;
+  const hw = CREEK_HALF_WIDTH * 1.05;
 
-  const width = CREEK_HALF_WIDTH * 2 * 1.05;
-  // Overlap ends slightly so bends don't gap.
-  const geo = new THREE.PlaneGeometry(width, len + 0.4, 2, Math.max(2, Math.round(len * 2)));
+  const positions = [];
+  const uvs = [];
+  const index = [];
 
-  const forward = new THREE.Vector3(dx, 0, dz).divideScalar(len);
-  const right = new THREE.Vector3().crossVectors(UP, forward).normalize();
-  const basis = new THREE.Matrix4().makeBasis(right, forward, UP);
+  const lengths = [0];
+  for (let i = 1; i < nodes.length; i++) {
+    lengths.push(
+      lengths[i - 1] +
+        Math.hypot(nodes[i].x - nodes[i - 1].x, nodes[i].z - nodes[i - 1].z),
+    );
+  }
+  const total = lengths[lengths.length - 1] || 1;
+
+  for (let i = 0; i < nodes.length; i++) {
+    const p = nodes[i];
+    const prev = nodes[Math.max(0, i - 1)];
+    const next = nodes[Math.min(nodes.length - 1, i + 1)];
+    let tx = next.x - prev.x;
+    let tz = next.z - prev.z;
+    const tl = Math.hypot(tx, tz) || 1;
+    tx /= tl;
+    tz /= tl;
+    // Perpendicular (across the stream), horizontal.
+    const px = -tz * hw;
+    const pz = tx * hw;
+    const y = p.bed + CREEK_SURFACE_LIFT;
+
+    positions.push(p.x + px, y, p.z + pz); // left
+    positions.push(p.x - px, y, p.z - pz); // right
+    const v = lengths[i] / total;
+    uvs.push(0, v, 1, v);
+  }
+
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const a = i * 2;
+    const b = i * 2 + 1;
+    const c = (i + 1) * 2;
+    const d = (i + 1) * 2 + 1;
+    index.push(a, b, d, a, d, c);
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(index);
+  geo.computeVertexNormals();
 
   const mesh = new THREE.Mesh(geo, material);
-  mesh.quaternion.setFromRotationMatrix(basis);
-  mesh.position.set(
-    (a.x + b.x) / 2,
-    (a.bed + b.bed) / 2 + CREEK_SURFACE_LIFT,
-    (a.z + b.z) / 2,
-  );
   mesh.renderOrder = 1;
   return mesh;
 }
@@ -180,6 +223,82 @@ function buildBankStones() {
   return mesh;
 }
 
+/** A little arched wooden footbridge so people can cross the creek. */
+function buildBridge() {
+  const node = CREEK_NODES[BRIDGE_NODE];
+  const prev = CREEK_NODES[BRIDGE_NODE - 1];
+  const next = CREEK_NODES[Math.min(BRIDGE_NODE + 1, CREEK_NODES.length - 1)];
+  // Flow direction, then the span (across the creek) perpendicular to it.
+  const fdx = next.x - prev.x;
+  const fdz = next.z - prev.z;
+  const flen = Math.hypot(fdx, fdz) || 1;
+  const span = new THREE.Vector3(-fdz / flen, 0, fdx / flen); // perpendicular, horizontal
+  const zAxis = new THREE.Vector3().crossVectors(span, UP); // right-handed width axis
+  const basis = new THREE.Matrix4().makeBasis(span, UP, zAxis);
+
+  const L = BRIDGE_LENGTH;
+  const half = L / 2;
+  const arch = (x) => BRIDGE_ARCH * (1 - (x / half) * (x / half));
+
+  // Seat the deck ends on the banks (sample terrain just past each end).
+  const endAx = node.x + span.x * (half + 0.3);
+  const endAz = node.z + span.z * (half + 0.3);
+  const endBx = node.x - span.x * (half + 0.3);
+  const endBz = node.z - span.z * (half + 0.3);
+  const baseY =
+    Math.max(getTerrainHeight(endAx, endAz), getTerrainHeight(endBx, endBz)) + 0.05;
+
+  const wood = [];
+  const darkWood = [];
+
+  // Arched plank deck.
+  const planks = 10;
+  const step = L / planks;
+  for (let i = 0; i < planks; i++) {
+    const x = -half + (i + 0.5) * step;
+    const g = new THREE.BoxGeometry(step * 1.06, 0.08, BRIDGE_WIDTH);
+    g.translate(x, arch(x) + 0.04, 0);
+    wood.push(g);
+  }
+
+  // Two side beams following the arch, posts, and handrails.
+  for (const side of [-1, 1]) {
+    const z = (side * BRIDGE_WIDTH) / 2;
+    for (let i = 0; i < planks; i++) {
+      const x = -half + (i + 0.5) * step;
+      const beam = new THREE.BoxGeometry(step * 1.06, 0.12, 0.12);
+      beam.translate(x, arch(x), z);
+      darkWood.push(beam);
+    }
+    for (const px of [-half * 0.82, -half * 0.28, half * 0.28, half * 0.82]) {
+      const post = new THREE.BoxGeometry(0.1, 0.62, 0.1);
+      post.translate(px, arch(px) + 0.31, z);
+      darkWood.push(post);
+      const rail = new THREE.BoxGeometry(0.52, 0.07, 0.07);
+      rail.translate(px, arch(px) + 0.6, z);
+      wood.push(rail);
+    }
+  }
+
+  const group = new THREE.Group();
+  const deck = new THREE.Mesh(
+    mergeGeometries(wood, false),
+    new THREE.MeshStandardMaterial({ color: BRIDGE_WOOD, roughness: 0.85, flatShading: true }),
+  );
+  deck.castShadow = true;
+  deck.receiveShadow = true;
+  const frame = new THREE.Mesh(
+    mergeGeometries(darkWood, false),
+    new THREE.MeshStandardMaterial({ color: BRIDGE_WOOD_DARK, roughness: 0.85, flatShading: true }),
+  );
+  frame.castShadow = true;
+  group.add(deck, frame);
+
+  group.quaternion.setFromRotationMatrix(basis);
+  group.position.set(node.x, baseY, node.z);
+  return group;
+}
+
 /**
  * The creek + little waterfall that winds down the valley into the pool.
  * Returns the group, the animated water materials (drive uTime each frame),
@@ -196,12 +315,12 @@ export function createWaterways() {
   });
   waterMaterials.push(streamMat);
 
-  // Stream segments, skipping the waterfall gap (handled separately).
-  for (let i = 0; i < CREEK_NODES.length - 1; i++) {
-    if (i === WATERFALL_SEGMENT) continue;
-    const seg = buildStreamSegment(CREEK_NODES[i], CREEK_NODES[i + 1], streamMat);
-    if (seg) group.add(seg);
-  }
+  // Two continuous ribbons that follow the terrain: the upper gully above the
+  // waterfall, and the lower stream from the plunge pool across the valley.
+  const upper = buildStreamRibbon(CREEK_NODES.slice(0, WATERFALL_SEGMENT + 1), streamMat);
+  if (upper) group.add(upper);
+  const lower = buildStreamRibbon(CREEK_NODES.slice(WATERFALL_SEGMENT + 1), streamMat);
+  if (lower) group.add(lower);
 
   const fallMat = createWaterMaterial({
     deep: CREEK_SHALLOW,
@@ -229,6 +348,8 @@ export function createWaterways() {
 
   const bankStones = buildBankStones();
   if (bankStones) group.add(bankStones);
+
+  group.add(buildBridge());
 
   const mist = buildMist(plungeBase);
   group.add(mist.points);
