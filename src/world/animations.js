@@ -1,5 +1,6 @@
 import { FOLIAGE_SWAY_SPEED } from './nature.js';
 import { RIPPLE_SPEED } from './waterFeature.js';
+import { MIST_RISE_SPEED } from './waterways.js';
 import { MOTE_ORBIT_SPEED } from './motes.js';
 import { CLOUD_DRIFT_SPEED } from './clouds.js';
 import { BIRD_WING_FLAP_SPEED } from './birds.js';
@@ -71,12 +72,16 @@ function updateBirds(birds, perches, elapsed, delta) {
 export function createWorldAnimations({
   swayTargets,
   waterMaterial,
+  waterMaterials = [],
+  waterfallMist,
+  groundMist,
   motes,
   clouds,
   birds,
   birdPerches,
 }) {
   let elapsed = 0;
+  const allWater = [...(waterMaterial ? [waterMaterial] : []), ...waterMaterials];
 
   function update(delta) {
     elapsed += delta;
@@ -91,8 +96,26 @@ export function createWorldAnimations({
       target.rotation.x = sway * 0.35;
     }
 
-    if (waterMaterial) {
-      waterMaterial.uniforms.uTime.value = elapsed * RIPPLE_SPEED;
+    for (const mat of allWater) {
+      mat.uniforms.uTime.value = elapsed * RIPPLE_SPEED;
+    }
+
+    if (waterfallMist) {
+      const { positions, seeds, points, baseY } = waterfallMist;
+      for (let i = 0; i < seeds.length; i++) {
+        const s = seeds[i];
+        const i3 = i * 3;
+        const cycle = (elapsed * MIST_RISE_SPEED * s.rise + s.phase) % 2.4;
+        positions[i3] = s.ox + Math.sin(elapsed * s.speed + s.phase) * s.sway;
+        positions[i3 + 1] = baseY + cycle;
+        positions[i3 + 2] = s.oz + Math.cos(elapsed * s.speed * 0.8 + s.phase) * s.sway;
+      }
+      points.geometry.attributes.position.needsUpdate = true;
+      points.material.opacity = 0.24 + 0.06 * Math.sin(elapsed * 0.8);
+    }
+
+    if (groundMist) {
+      groundMist.update(elapsed);
     }
 
     if (motes) {

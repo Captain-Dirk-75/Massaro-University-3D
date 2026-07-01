@@ -1,6 +1,6 @@
 # Project status
 
-**Last updated:** 2026-07-01 (campus landscape dressing)
+**Last updated:** 2026-07-01 (valley terrain + creek & waterfall)
 **Repository:** [Massaro-University-3D](https://github.com/Captain-Dirk-75/Massaro-University-3D)  
 **Default branch:** `master`
 
@@ -21,6 +21,7 @@ Foundation complete through **Phase 5** (platform data layer). App runs fully of
 
 ## Recent changes
 
+- 2026-07-01 — Shambhala terrain: `ground.js` now a valley/hill height field with a canonical `getTerrainHeight(x,z)`; flat valley floor cradled by soft green hills (opens toward the south approach). Buildings sit on level pads (`setTerrainPads` flattens each footprint + apron blend), player floor + planting + props + rocks all re-anchor to the terrain. New `creek.js` (spring mound + carved channel + little waterfall) and `waterways.js` (animated creek ribbon, waterfall sheet, plunge foam, mist, bank stones) feeding the reflecting pool; shared water material via `waterFeature.createWaterMaterial`. Ground-hugging mist in the lows + fog tuning in `atmosphere.js`; animations drive the new water/mist. Pads keep interiors at `floorHeight` (< stair-snap), so buildings/windows/gates stay walkable.
 - 2026-07-01 — Campus landscape: curved paths (`campusPaths.js`), cluster planting + instanced ground plants, focal props (benches, lantern, nook), ground/atmosphere polish
 - 2026-07-01 — Return to Guest: `cancelSubscription()` in checkout + "Return to Guest" in store; reuses `setSubscription('guest', null)` and live gate refresh/eject
 - 2026-06-30 — Fix black screen after scene-swap removal: render loop must call `outdoorComposer.composer.render()` (not `.render()` on the wrapper object)

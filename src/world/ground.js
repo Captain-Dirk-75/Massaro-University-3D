@@ -2,25 +2,57 @@ import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise';
 import { seededRandom } from './procedural/random.js';
 import { isInsideBuildingFootprint } from './buildingFootprints.js';
-import { isStonePath, isInsidePond, distanceToNearestPath } from './campusPaths.js';
+import { isStonePath, distanceToNearestPath } from './campusPaths.js';
+import { springMoundHeight, creekCarveAt, SPRING_MOUND } from './creek.js';
 
 export { isStonePath } from './campusPaths.js';
 
-const GROUND_SIZE = 120;
-const SEGMENTS = 96;
+const GROUND_SIZE = 130;
+const SEGMENTS = 128;
 
-// ── Mood knobs ──
-export const HEIGHT_AMPLITUDE = 0.38;
-export const HEIGHT_SCALE = 0.028;
+// ── Valley / mountain-sanctuary knobs ──
+// The campus sits on a calm valley floor (flat near 0); gentle green hills rise
+// around it to cradle the sanctuary. Keep slopes soft and walkable.
+export const VALLEY_CENTER = { x: 0, z: -17 };
+export const BASIN_RADIUS = 40; // flat valley floor out to here (holds all buildings)
+export const HILL_RADIUS = 60; // hills reach near-full height by here
+export const HILL_HEIGHT = 10; // valley-wall height
+export const RIM_RISE = 4.5; // extra backdrop rise past the ring
+export const SOUTH_OPENING = 0.52; // how much the southern wall opens toward the approach
+
+// ── Rolling / surface knobs ──
+export const HEIGHT_SCALE = 0.03;
+export const BASIN_ROLL = 0.13; // gentle undulation on the valley floor (well under the stair threshold)
+export const HILL_ROLL = 1.1; // rolling relief that grows onto the hillsides
+
+// ── Building pad knobs ──
+export const PAD_HEIGHT = 0; // buildings sit on level pads at the valley floor
+export const PAD_APRON = 3.2; // blend distance from pad edge into the slope
+
+// ── Colour knobs ──
 export const GRASS_BASE = new THREE.Color(0x5a8a52);
 export const GRASS_VARIATION = 0.12;
 export const MEADOW_LIGHT = new THREE.Color(0x6a9a5a);
 export const MEADOW_STRENGTH = 0.22;
+export const HILL_TINT = new THREE.Color(0x4f7d4a); // slightly deeper green up high
 export const STONE_LIGHT = new THREE.Color(0xc4b8a8);
 export const STONE_DARK = new THREE.Color(0xa89880);
+export const CREEK_EARTH = new THREE.Color(0x6f5f4a); // damp bank/bed earth
 export const PATH_EDGE_BLEND = 0.55;
 
 const noise2D = createNoise2D(() => seededRandom(90210)());
+
+// Pads flatten the terrain under building footprints. Registered at bootstrap
+// once the campus (and its unified building footprints) is known.
+let terrainPads = [];
+export function setTerrainPads(zones) {
+  terrainPads = zones ?? [];
+}
+
+function smoothstep(edge0, edge1, x) {
+  const t = THREE.MathUtils.clamp((x - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
 
 function hash2(x, y) {
   const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
@@ -45,23 +77,80 @@ function noise2(x, y) {
   );
 }
 
-export function sampleGroundHeight(wx, wz) {
-  const n = noise2D(wx * HEIGHT_SCALE, wz * HEIGHT_SCALE);
-  const n2 = noise2D(wx * HEIGHT_SCALE * 2.2 + 40, wz * HEIGHT_SCALE * 2.2 + 40);
-  const n3 = noise2D(wx * HEIGHT_SCALE * 0.45 - 20, wz * HEIGHT_SCALE * 0.45 + 80);
-  const blend = n * 0.55 + n2 * 0.3 + n3 * 0.15;
-  let height = blend * HEIGHT_AMPLITUDE;
+/** Large-scale valley bowl: flat floor cradled by uneven green hills. */
+function valleyBase(x, z) {
+  const dx = x - VALLEY_CENTER.x;
+  const dz = z - VALLEY_CENTER.z;
+  const d = Math.hypot(dx, dz);
 
-  if (isStonePath(wx, wz)) {
-    height *= 0.35;
-  }
+  const ringT = smoothstep(BASIN_RADIUS, HILL_RADIUS, d);
+  // Uneven cradle — some shoulders higher, some saddles lower.
+  const prof = 0.78 + 0.34 * (noise2D(x * 0.016 + 11, z * 0.016 - 7) * 0.5 + 0.5);
 
-  if (isInsidePond(wx, wz)) {
-    height *= 0.15;
-  }
+  // Open the valley toward the southern approach so it doesn't feel sealed.
+  const dirZ = d > 1e-3 ? dz / d : 0;
+  const dirXabs = d > 1e-3 ? Math.abs(dx) / d : 0;
+  const open = 1 - SOUTH_OPENING * smoothstep(0.15, 0.95, dirZ) * (1 - dirXabs * 0.6);
 
-  return height;
+  let h = HILL_HEIGHT * ringT * prof * open;
+  h += RIM_RISE * smoothstep(HILL_RADIUS, 92, d) * open;
+  return { h, ringT };
 }
+
+function rollingRelief(x, z, ringT, damp) {
+  const n =
+    noise2D(x * HEIGHT_SCALE, z * HEIGHT_SCALE) * 0.6 +
+    noise2D(x * HEIGHT_SCALE * 2.3 + 40, z * HEIGHT_SCALE * 2.3 + 40) * 0.28 +
+    noise2D(x * HEIGHT_SCALE * 0.5 - 20, z * HEIGHT_SCALE * 0.5 + 80) * 0.12;
+  const amp = (BASIN_ROLL + ringT * HILL_ROLL) * damp;
+  return n * amp;
+}
+
+function padBlend(x, z) {
+  let blend = 0;
+  for (const zone of terrainPads) {
+    const ox = Math.max(0, zone.minX - x, x - zone.maxX);
+    const oz = Math.max(0, zone.minZ - z, z - zone.maxZ);
+    const outside = Math.hypot(ox, oz);
+    const b = outside <= 0 ? 1 : 1 - smoothstep(0, PAD_APRON, outside);
+    if (b > blend) blend = b;
+    if (blend >= 1) break;
+  }
+  return blend;
+}
+
+/**
+ * Canonical terrain height. Everything in the world sits on this — the ground
+ * mesh, buildings' pads, paths, planting, props, water, and the player's floor.
+ */
+export function getTerrainHeight(x, z) {
+  const mound = springMoundHeight(x, z);
+  const { h: baseH, ringT } = valleyBase(x, z);
+  let h = baseH + mound;
+
+  const carve = creekCarveAt(x, z);
+  // Damp fine relief near the creek and on the mound so the channel reads clean.
+  const damp =
+    (1 - 0.85 * carve.influence) * (1 - 0.6 * Math.min(1, mound / SPRING_MOUND.height));
+  h += rollingRelief(x, z, ringT, damp);
+
+  // Stone paths ease gently below the surrounding grade.
+  if (isStonePath(x, z)) h *= 0.5;
+
+  // Carve the creek channel.
+  if (carve.influence > 0) {
+    h = h * (1 - carve.influence) + carve.bottom * carve.influence;
+  }
+
+  // Flatten onto building pads (wins over everything so buildings stay level).
+  const pb = padBlend(x, z);
+  if (pb > 0) h = h * (1 - pb) + PAD_HEIGHT * pb;
+
+  return h;
+}
+
+// Back-compat alias — existing modules import `sampleGroundHeight`.
+export const sampleGroundHeight = getTerrainHeight;
 
 function vertexColorAt(wx, wz) {
   const n = noise2(wx * 0.12, wz * 0.12);
@@ -83,6 +172,18 @@ function vertexColorAt(wx, wz) {
 
   if (meadow > 0.58 && !nearPath) {
     color.lerp(MEADOW_LIGHT, MEADOW_STRENGTH * (meadow - 0.58) * 2.2);
+  }
+
+  // Deepen the green as the hills rise for a lush, cradled feel.
+  const { h } = valleyBase(wx, wz);
+  if (h > 0.6) {
+    color.lerp(HILL_TINT, THREE.MathUtils.clamp((h - 0.6) / 9, 0, 0.55));
+  }
+
+  // Damp earthy bank along the creek.
+  const carve = creekCarveAt(wx, wz);
+  if (carve.influence > 0.05) {
+    color.lerp(CREEK_EARTH, carve.influence * 0.5);
   }
 
   if (pathBlend > 0) {
@@ -109,20 +210,15 @@ export function createGround({ interiorZones = [] } = {}) {
   for (let i = 0; i < positions.count; i++) {
     const wx = positions.getX(i);
     const wz = positions.getZ(i);
-    const insideBuilding = isInsideBuildingFootprint(wx, wz, interiorZones);
 
-    if (insideBuilding) {
-      positions.setY(i, 0.02);
-      colors[i * 3] = interiorStone.r;
-      colors[i * 3 + 1] = interiorStone.g;
-      colors[i * 3 + 2] = interiorStone.b;
-      continue;
+    positions.setY(i, getTerrainHeight(wx, wz));
+
+    let color;
+    if (isInsideBuildingFootprint(wx, wz, interiorZones)) {
+      color = interiorStone;
+    } else {
+      color = vertexColorAt(wx, wz);
     }
-
-    const height = sampleGroundHeight(wx, wz);
-    positions.setY(i, height);
-
-    const color = vertexColorAt(wx, wz);
     colors[i * 3] = color.r;
     colors[i * 3 + 1] = color.g;
     colors[i * 3 + 2] = color.b;

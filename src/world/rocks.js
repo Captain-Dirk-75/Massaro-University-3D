@@ -4,6 +4,7 @@ import { seededRandom, hashSeed } from './procedural/random.js';
 import { sampleGroundHeight, isStonePath } from './ground.js';
 import { isInsideBuildingFootprint } from './buildingFootprints.js';
 import { isInsidePond } from './campusPaths.js';
+import { isInCreekChannel } from './creek.js';
 
 // ── Mood knobs ──
 export const ROCK_COUNT = 22;
@@ -36,6 +37,7 @@ function isRockExcluded(wx, wz, buildingZones) {
   if (isStonePath(wx, wz)) return true;
   if (isInsideBuildingFootprint(wx, wz, buildingZones)) return true;
   if (isInsidePond(wx, wz)) return true;
+  if (isInCreekChannel(wx, wz)) return true;
   return false;
 }
 

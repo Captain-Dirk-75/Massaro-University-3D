@@ -6,8 +6,9 @@ import { createRenderLoop } from './core/loop.js';
 import { createFirstPersonControls } from './controls/firstPerson.js';
 import { createWorldColliders } from './world/collisionVolumes.js';
 import { createInteractionSystem } from './controls/interaction.js';
-import { applyAtmosphere } from './world/atmosphere.js';
-import { createGround } from './world/ground.js';
+import { applyAtmosphere, createGroundMist } from './world/atmosphere.js';
+import { createGround, setTerrainPads, getTerrainHeight } from './world/ground.js';
+import { createWaterways } from './world/waterways.js';
 import { createLighting } from './world/lighting.js';
 import { createCampus } from './world/campusBuilder.js';
 import { getBuildingExclusionZones } from './world/buildingFootprints.js';
@@ -71,8 +72,18 @@ async function bootstrap() {
     unifiedBuildings: campus.unifiedBuildings,
   });
 
+  // Register level pads so the terrain flattens under every building before
+  // the ground mesh, planting, props, and player floor sample its height.
+  setTerrainPads(buildingZones);
+
   outdoorRoot.add(createGround({ interiorZones: buildingZones }));
   outdoorRoot.add(campus.root);
+
+  const waterways = createWaterways();
+  outdoorRoot.add(waterways.group);
+
+  const groundMist = createGroundMist();
+  outdoorRoot.add(groundMist.group);
 
   const { group: nature, swayTargets, perches: treePerches, treeColliders } =
     createNature({ buildingZones });
@@ -116,6 +127,9 @@ async function bootstrap() {
   const animations = createWorldAnimations({
     swayTargets,
     waterMaterial: campus.waterMaterial,
+    waterMaterials: waterways.waterMaterials,
+    waterfallMist: waterways.mist,
+    groundMist,
     motes,
     clouds,
     birds,
@@ -188,7 +202,8 @@ async function bootstrap() {
         const y = building.getFloorY(x, z, currentY);
         if (y != null) return y;
       }
-      return 0;
+      // Outdoors: walk on the rolling terrain surface.
+      return getTerrainHeight(x, z);
     },
     onLockChange(locked) {
       appState.pointerLocked = locked;

@@ -6,6 +6,7 @@ import { pickTreeProfile, sampleRange, TREE_PROFILES } from './procedural/treePr
 import { sampleGroundHeight, isStonePath } from './ground.js';
 import { isInsideBuildingFootprint } from './buildingFootprints.js';
 import { isInsidePond, sampleMainSpine, POND_CENTER } from './campusPaths.js';
+import { isInCreekChannel } from './creek.js';
 
 // ── Mood knobs ──
 export const FOLIAGE_SWAY_AMOUNT = 0.045;
@@ -39,6 +40,7 @@ function isExcluded(wx, wz, buildingZones) {
   if (isStonePath(wx, wz)) return true;
   if (isInsideBuildingFootprint(wx, wz, buildingZones)) return true;
   if (isInsidePond(wx, wz)) return true;
+  if (isInCreekChannel(wx, wz)) return true;
   return false;
 }
 
